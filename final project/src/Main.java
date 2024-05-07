@@ -5,7 +5,7 @@ public class Main {
         // Example usage
         System.out.println("");
 
-        SeamCarver sc = new SeamCarver("path/to/image.jpg", 300, 400, "", "");
+  //      SeamCarver sc = new SeamCarver("path/to/image.jpg", 300, 400, "", "");
         // Save or display the result
     }
 }
