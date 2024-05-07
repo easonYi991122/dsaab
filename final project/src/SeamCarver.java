@@ -1,6 +1,12 @@
 import edu.princeton.cs.algs4.Picture;
-import java.util.List;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SeamCarver {
     private Picture inImage;
@@ -44,6 +50,32 @@ public class SeamCarver {
         this.kernelYRight = new double[][]{{0, 0, 0}, {1, 0, 0}, {0, -1, 0}};
 
         start();
+    }
+
+    public double[][] readMask(String objectMask) {
+        try {
+            // 使用ImageIO读取图像
+            BufferedImage img = ImageIO.read(new File(objectMask));
+
+            // 初始化mask数组
+            double[][] mask = new double[img.getHeight()][img.getWidth()];
+
+            // 遍历图像的每个像素，转换为灰度并存储到mask数组
+            for (int y = 0; y < img.getHeight(); y++) {
+                for (int x = 0; x < img.getWidth(); x++) {
+                    Color color = new Color(img.getRGB(x, y));
+                    // 计算灰度值
+                    double gray = 0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue();
+                    mask[y][x] = gray;
+                }
+            }
+
+            return mask;
+        } catch (IOException e) {
+            e.printStackTrace();
+            // 在发生异常时返回null或一个空数组可能更安全，具体取决于你如何处理这些情况
+            return null;
+        }
     }
 
     private void start() {
@@ -208,41 +240,388 @@ public class SeamCarver {
     }
 
 
-    private double[][] calcEnergyMap() {
-        // Implement energy map calculation
-        return null; // Placeholder return
+    public double[][] calcEnergyMap() {
+        int width = outImage.width();
+        int height = outImage.height();
+        double[][] energyMap = new double[width][height];
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                energyMap[x][y] = calcEnergy(x, y);
+            }
+        }
+
+        return energyMap;
     }
 
-    private double[][] cumulativeMapForward(double[][] energyMap) {
-        // Implement forward energy map calculation
-        return null; // Placeholder return
+    private double calcEnergy(int x, int y) {
+        // 边界像素的能量值设为1000，模拟无穷大的梯度
+        if (x == 0 || x == outImage.width() - 1 || y == 0 || y == outImage.height() - 1) {
+            return 1000;
+        }
+
+        // 计算颜色梯度
+        int[] dx = {-1, 1};
+        int[] dy = {-1, 1};
+
+        double gradientSquared = 0;
+        for (int d : dx) {
+            gradientSquared += colorGradientSquared(x, y, x + d, y);
+        }
+        for (int d : dy) {
+            gradientSquared += colorGradientSquared(x, y, x, y + d);
+        }
+
+        // 返回梯度的平方根作为能量值
+        return Math.sqrt(gradientSquared);
     }
 
-    private int[] findSeam(double[][] cumulativeMap) {
-        // Implement seam finding
-        return null; // Placeholder return
+    private double colorGradientSquared(int x1, int y1, int x2, int y2) {
+        int rgb1 = outImage.getRGB(x1, y1);
+        int rgb2 = outImage.getRGB(x2, y2);
+
+        int r = ((rgb1 >> 16) & 0xFF) - ((rgb2 >> 16) & 0xFF);
+        int g = ((rgb1 >> 8) & 0xFF) - ((rgb2 >> 8) & 0xFF);
+        int b = (rgb1 & 0xFF) - (rgb2 & 0xFF);
+
+        return r * r + g * g + b * b;
     }
 
-    private void deleteSeam(int[] seamIdx) {
-        // Implement seam deletion
+
+    public double[][] cumulativeMapBackward(double[][] energyMap) {
+        int m = energyMap.length;
+        int n = energyMap[0].length;
+        double[][] output = new double[m][n];
+
+        // 首行直接复制，因为它没有前一行
+        System.arraycopy(energyMap[0], 0, output[0], 0, n);
+
+        for (int row = 1; row < m; row++) {
+            for (int col = 0; col < n; col++) {
+                double minPrev = output[row - 1][col];
+                if (col > 0) {
+                    minPrev = Math.min(minPrev, output[row - 1][col - 1]);
+                }
+                if (col < n - 1) {
+                    minPrev = Math.min(minPrev, output[row - 1][col + 1]);
+                }
+                output[row][col] = energyMap[row][col] + minPrev;
+            }
+        }
+
+        return output;
     }
 
-    private void addSeam(int[] seamIdx) {
-        // Implement seam addition
+    public double[][] cumulativeMapForward(double[][] energyMap) {
+        double[][] matrixX = calcNeighborMatrix(kernelX);
+        double[][] matrixYLeft = calcNeighborMatrix(kernelYLeft);
+        double[][] matrixYRight = calcNeighborMatrix(kernelYRight);
+
+        int m = energyMap.length;
+        int n = energyMap[0].length;
+        double[][] output = new double[m][n];
+
+        for (int i = 0; i < m; i++) {
+            System.arraycopy(energyMap[i], 0, output[i], 0, n);
+        }
+
+        for (int row = 1; row < m; row++) {
+            for (int col = 0; col < n; col++) {
+                double eLeft = Double.MAX_VALUE;
+                double eRight = Double.MAX_VALUE;
+                double eUp = output[row - 1][col] + matrixX[row - 1][col];
+
+                if (col > 0) {
+                    eLeft = output[row - 1][col - 1] + matrixX[row - 1][col - 1] + matrixYLeft[row - 1][col - 1];
+                }
+                if (col < n - 1) {
+                    eRight = output[row - 1][col + 1] + matrixX[row - 1][col + 1] + matrixYRight[row - 1][col + 1];
+                }
+
+                output[row][col] = energyMap[row][col] + Math.min(eUp, Math.min(eLeft, eRight));
+            }
+        }
+
+        return output;
     }
 
-    private int[] updateSeams(int[] remainingSeams, int currentSeam) {
-        // Implement seam updates
-        return null; // Placeholder return
+    public double[][] calcNeighborMatrix(double[][] kernel) {
+        int width = outImage.width();
+        int height = outImage.height();
+        double[][] output = new double[width][height];
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                output[x][y] = applyKernel(x, y, kernel);
+            }
+        }
+
+        return output;
     }
 
-    private Picture rotateImage(Picture image, boolean ccw) {
-        // Implement image rotation
-        return null; // Placeholder return
+    private double applyKernel(int x, int y, double[][] kernel) {
+        double result = 0;
+        int kernelWidth = kernel.length;
+        int kernelHeight = kernel[0].length;
+        int kernelHalfWidth = kernelWidth / 2;
+        int kernelHalfHeight = kernelHeight / 2;
+
+        for (int i = -kernelHalfWidth; i <= kernelHalfWidth; i++) {
+            for (int j = -kernelHalfHeight; j <= kernelHalfHeight; j++) {
+                if (x + i >= 0 && x + i < outImage.width() && y + j >= 0 && y + j < outImage.height()) {
+                    Color rgb = outImage.get(x + i, y + j);
+                    int r = rgb.getRed();
+                    int g = rgb.getGreen();
+                    int b = rgb.getBlue();
+
+                    double kernelValue = kernel[i + kernelHalfWidth][j + kernelHalfHeight];
+                    result += Math.abs(kernelValue * r) + Math.abs(kernelValue * g) + Math.abs(kernelValue * b);
+                }
+            }
+        }
+
+        return result;
+    }
+    public int[] findSeam(double[][] cumulativeMap) {
+        int m = cumulativeMap.length;
+        int n = cumulativeMap[0].length;
+        int[] output = new int[m];
+
+        // 找到最后一行中能量最小的点
+        output[m - 1] = findMinIndex(cumulativeMap[m - 1]);
+
+        // 从下到上回溯找到最小能量缝
+        for (int row = m - 2; row >= 0; row--) {
+            int prvX = output[row + 1];
+            output[row] = prvX; // 默认为正上方
+            double minVal = cumulativeMap[row][prvX];
+
+            // 检查左上方
+            if (prvX > 0 && cumulativeMap[row][prvX - 1] < minVal) {
+                minVal = cumulativeMap[row][prvX - 1];
+                output[row] = prvX - 1;
+            }
+
+            // 检查右上方
+            if (prvX < n - 1 && cumulativeMap[row][prvX + 1] < minVal) {
+                output[row] = prvX + 1;
+            }
+        }
+
+        return output;
     }
 
-    private double[][] rotateMask(double[][] mask, boolean ccw) {
-        // Implement mask rotation
-        return null; // Placeholder return
+    // 辅助方法：找到数组中最小值的索引
+    private int findMinIndex(double[] array) {
+        int minIndex = 0;
+        double minValue = array[0];
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] < minValue) {
+                minValue = array[i];
+                minIndex = i;
+            }
+        }
+        return minIndex;
+    }
+
+    public void deleteSeam(int[] seamIdx) {
+        int m = outImage.height();
+        int n = outImage.width();
+        Picture output = new Picture(n - 1, m);
+
+        for (int row = 0; row < m; row++) {
+            int colToRemove = seamIdx[row];
+            for (int col = 0; col < n - 1; col++) {
+                if (col < colToRemove) {
+                    output.set(col, row, outImage.get(col, row));
+                } else {
+                    output.set(col, row, outImage.get(col + 1, row));
+                }
+            }
+        }
+
+        outImage = output;
+    }
+
+    public void addSeam(int[] seamIdx) {
+        int m = outImage.height();
+        int n = outImage.width();
+        Picture output = new Picture(n + 1, m);
+
+        for (int row = 0; row < m; row++) {
+            int col = seamIdx[row];
+            for (int currentCol = 0; currentCol <= n; currentCol++) {
+                if (currentCol < col) {
+                    // 直接复制原始图像中的像素到新图像
+                    output.set(currentCol, row, outImage.get(currentCol, row));
+                } else if (currentCol == col) {
+                    Color leftColor = outImage.get(currentCol - 1 < 0 ? 0 : currentCol - 1, row);
+                    Color rightColor = outImage.get(currentCol, row);
+                    Color avgColor = new Color(
+                            (leftColor.getRed() + rightColor.getRed()) / 2,
+                            (leftColor.getGreen() + rightColor.getGreen()) / 2,
+                            (leftColor.getBlue() + rightColor.getBlue()) / 2);
+                    output.set(currentCol, row, avgColor);
+                } else {
+                    // 由于添加了新的列，所以复制剩余的像素时需要将列索引减一
+                    output.set(currentCol, row, outImage.get(currentCol - 1, row));
+                }
+            }
+        }
+
+        outImage = output;
+    }
+
+    public List<int[]> updateSeams(List<int[]> remainingSeams, int[] currentSeam) {
+        List<int[]> updatedSeams = new ArrayList<>();
+
+        for (int[] seam : remainingSeams) {
+            int[] updatedSeam = new int[seam.length];
+            for (int i = 0; i < seam.length; i++) {
+                if (seam[i] >= currentSeam[i]) {
+                    updatedSeam[i] = seam[i] + 2;
+                } else {
+                    updatedSeam[i] = seam[i];
+                }
+            }
+            updatedSeams.add(updatedSeam);
+        }
+
+        return updatedSeams;
+    }
+
+    public Picture rotateImage(Picture image, boolean ccw) {
+        int m = image.height();
+        int n = image.width();
+        Picture output = new Picture(m, n); // 注意，旋转后的宽度和高度会交换
+
+        if (ccw) {
+            // 逆时针旋转
+            for (int x = 0; x < n; x++) {
+                for (int y = 0; y < m; y++) {
+                    Color color = image.get(x, m - 1 - y);
+                    output.set(y, n - 1 - x, color); // 逆时针旋转并翻转
+                }
+            }
+        } else {
+            // 顺时针旋转
+            for (int x = 0; x < n; x++) {
+                for (int y = 0; y < m; y++) {
+                    Color color = image.get(x, y);
+                    output.set(m - 1 - y, x, color); // 顺时针旋转
+                }
+            }
+        }
+
+        return output;
+    }
+
+    public double[][] rotateMask(double[][] mask, boolean ccw) {
+        int m = mask.length;
+        int n = mask[0].length;
+        double[][] output = new double[n][m]; // 旋转后的尺寸与原尺寸交换
+
+        if (ccw) {
+            // 逆时针旋转
+            for (int x = 0; x < m; x++) {
+                for (int y = 0; y < n; y++) {
+                    output[y][m - 1 - x] = mask[x][n - 1 - y]; // 逆时针旋转并翻转
+                }
+            }
+        } else {
+            // 顺时针旋转
+            for (int x = 0; x < m; x++) {
+                for (int y = 0; y < n; y++) {
+                    output[n - 1 - y][x] = mask[x][y]; // 顺时针旋转
+                }
+            }
+        }
+
+        return output;
+    }
+    public void deleteSeamOnMask(int[] seamIdx) {
+        int m = mask.length;
+        int n = mask[0].length;
+        double[][] output = new double[m][n - 1]; // 创建一个新的遮罩数组，每行的长度减1
+
+        for (int row = 0; row < m; row++) {
+            int colToRemove = seamIdx[row];
+            for (int col = 0, newCol = 0; col < n; col++) {
+                if (col != colToRemove) {
+                    output[row][newCol] = mask[row][col];
+                    newCol++;
+                }
+            }
+        }
+
+        mask = output; // 更新遮罩数组
+    }
+    public void addSeamOnMask(int[] seamIdx) {
+        int m = mask.length;
+        int n = mask[0].length;
+        double[][] output = new double[m][n + 1]; // 创建一个新的遮罩数组，每行的长度加1
+
+        for (int row = 0; row < m; row++) {
+            int col = seamIdx[row];
+            // 计算要插入的像素的值
+            double p;
+            if (col == 0) {
+                p = (mask[row][col] + mask[row][Math.min(col + 1, n - 1)]) / 2.0;
+            } else {
+                p = (mask[row][col - 1] + mask[row][col]) / 2.0;
+            }
+
+            // 复制插入点之前的部分
+            for (int j = 0; j < col; j++) {
+                output[row][j] = mask[row][j];
+            }
+            // 插入新的像素
+            output[row][col] = p;
+            // 复制插入点及之后的部分
+            for (int j = col; j < n; j++) {
+                output[row][j + 1] = mask[row][j];
+            }
+        }
+
+        mask = output; // 更新遮罩数组
+    }
+    public int[] getObjectDimension() {
+        int minRow = Integer.MAX_VALUE;
+        int maxRow = Integer.MIN_VALUE;
+        int minCol = Integer.MAX_VALUE;
+        int maxCol = Integer.MIN_VALUE;
+
+        for (int row = 0; row < mask.length; row++) {
+            for (int col = 0; col < mask[row].length; col++) {
+                if (mask[row][col] > 0) {
+                    if (row < minRow) minRow = row;
+                    if (row > maxRow) maxRow = row;
+                    if (col < minCol) minCol = col;
+                    if (col > maxCol) maxCol = col;
+                }
+            }
+        }
+
+        int height = maxRow - minRow + 1;
+        int width = maxCol - minCol + 1;
+
+        return new int[]{height, width}; // 返回高度和宽度
+    }
+    public void saveResult(String filename) {
+        // 将Picture转换为BufferedImage
+        BufferedImage bufferedImage = new BufferedImage(outImage.width(), outImage.height(), BufferedImage.TYPE_INT_RGB);
+        for (int col = 0; col < outImage.width(); col++) {
+            for (int row = 0; row < outImage.height(); row++) {
+                bufferedImage.setRGB(col, row, outImage.get(col, row).getRGB());
+            }
+        }
+
+        // 保存图像
+        File outputFile = new File(filename);
+        try {
+            ImageIO.write(bufferedImage, "jpg", outputFile); // 假设文件名以.jpg结尾
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
