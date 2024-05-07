@@ -1,7 +1,6 @@
 public class Main {
     public static void main(String[] args) {
         // Example usage
-        // 如果您希望在输出的开始处有一个空行，可以保留下面这行代码
         System.out.println("");
 
         // 正确的字符串声明和变量名称
@@ -12,6 +11,5 @@ public class Main {
         SeamCarver sc = new SeamCarver(testFilename, 800, 1500, "", "");
 
         // Save or display the result
-        // 这里您需要根据SeamCarver类提供的方法来保存或显示结果
     }
 }
