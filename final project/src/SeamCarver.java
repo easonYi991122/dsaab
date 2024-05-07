@@ -1,7 +1,12 @@
 import edu.princeton.cs.algs4.Picture;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.awt.Color;
 
 public class SeamCarver {
     private Picture inImage;
@@ -45,6 +50,32 @@ public class SeamCarver {
         this.kernelYRight = new double[][]{{0, 0, 0}, {1, 0, 0}, {0, -1, 0}};
 
         start();
+    }
+
+    public double[][] readMask(String objectMask) {
+        try {
+            // 使用ImageIO读取图像
+            BufferedImage img = ImageIO.read(new File(objectMask));
+
+            // 初始化mask数组
+            double[][] mask = new double[img.getHeight()][img.getWidth()];
+
+            // 遍历图像的每个像素，转换为灰度并存储到mask数组
+            for (int y = 0; y < img.getHeight(); y++) {
+                for (int x = 0; x < img.getWidth(); x++) {
+                    Color color = new Color(img.getRGB(x, y));
+                    // 计算灰度值
+                    double gray = 0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue();
+                    mask[y][x] = gray;
+                }
+            }
+
+            return mask;
+        } catch (IOException e) {
+            e.printStackTrace();
+            // 在发生异常时返回null或一个空数组可能更安全，具体取决于你如何处理这些情况
+            return null;
+        }
     }
 
     private void start() {
@@ -338,10 +369,10 @@ public class SeamCarver {
         for (int i = -kernelHalfWidth; i <= kernelHalfWidth; i++) {
             for (int j = -kernelHalfHeight; j <= kernelHalfHeight; j++) {
                 if (x + i >= 0 && x + i < outImage.width() && y + j >= 0 && y + j < outImage.height()) {
-                    int rgb = outImage.get(x + i, y + j);
-                    int r = (rgb >> 16) & 0xFF;
-                    int g = (rgb >> 8) & 0xFF;
-                    int b = rgb & 0xFF;
+                    Color rgb = outImage.get(x + i, y + j);
+                    int r = rgb.getRed();
+                    int g = rgb.getGreen();
+                    int b = rgb.getBlue();
 
                     double kernelValue = kernel[i + kernelHalfWidth][j + kernelHalfHeight];
                     result += Math.abs(kernelValue * r) + Math.abs(kernelValue * g) + Math.abs(kernelValue * b);
@@ -441,22 +472,24 @@ public class SeamCarver {
         outImage = output;
     }
 
-    public List<int[]> updateSeams(List<int[]> remainingSeams, int currentSeam) {
-        List<int[]> output = new ArrayList<>();
+    public List<int[]> updateSeams(List<int[]> remainingSeams, int[] currentSeam) {
+        List<int[]> updatedSeams = new ArrayList<>();
+
         for (int[] seam : remainingSeams) {
-            // 创建一个新的数组来存储更新后的缝
             int[] updatedSeam = new int[seam.length];
             for (int i = 0; i < seam.length; i++) {
-                if (seam[i] >= currentSeam) {
+                if (seam[i] >= currentSeam[i]) {
                     updatedSeam[i] = seam[i] + 2;
                 } else {
                     updatedSeam[i] = seam[i];
                 }
             }
-            output.add(updatedSeam);
+            updatedSeams.add(updatedSeam);
         }
-        return output;
+
+        return updatedSeams;
     }
+
     public Picture rotateImage(Picture image, boolean ccw) {
         int m = image.height();
         int n = image.width();
@@ -483,10 +516,10 @@ public class SeamCarver {
         return output;
     }
 
-    public boolean[][] rotateMask(boolean[][] mask, boolean ccw) {
+    public double[][] rotateMask(double[][] mask, boolean ccw) {
         int m = mask.length;
         int n = mask[0].length;
-        boolean[][] output = new boolean[n][m]; // 旋转后的尺寸与原尺寸交换
+        double[][] output = new double[n][m]; // 旋转后的尺寸与原尺寸交换
 
         if (ccw) {
             // 逆时针旋转
@@ -573,5 +606,22 @@ public class SeamCarver {
         int width = maxCol - minCol + 1;
 
         return new int[]{height, width}; // 返回高度和宽度
+    }
+    public void saveResult(String filename) {
+        // 将Picture转换为BufferedImage
+        BufferedImage bufferedImage = new BufferedImage(outImage.width(), outImage.height(), BufferedImage.TYPE_INT_RGB);
+        for (int col = 0; col < outImage.width(); col++) {
+            for (int row = 0; row < outImage.height(); row++) {
+                bufferedImage.setRGB(col, row, outImage.get(col, row).getRGB());
+            }
+        }
+
+        // 保存图像
+        File outputFile = new File(filename);
+        try {
+            ImageIO.write(bufferedImage, "jpg", outputFile); // 假设文件名以.jpg结尾
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
