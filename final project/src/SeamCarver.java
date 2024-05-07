@@ -1,5 +1,9 @@
 import edu.princeton.cs.algs4.Picture;
 
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -49,7 +53,9 @@ public class SeamCarver {
         this.kernelYLeft = new double[][]{{0, 0, 0}, {0, 0, 1}, {0, -1, 0}};
         this.kernelYRight = new double[][]{{0, 0, 0}, {1, 0, 0}, {0, -1, 0}};
 
+        frameini();
         start();
+        saveResult("D:\\study\\dsaab\\final project\\out1.jpg");
     }
 
     public double[][] readMask(String objectMask) {
@@ -185,6 +191,9 @@ public class SeamCarver {
             }
             double[][] cumulativeMap = cumulativeMapForward(energyMap);
             int[] seamIdx = findSeam(cumulativeMap);
+
+            //System.out.println(Arrays.stream(seamIdx).sum());
+
             deleteSeam(seamIdx);
             if (protect) {
                 deleteSeamOnMask(seamIdx);
@@ -243,11 +252,11 @@ public class SeamCarver {
     public double[][] calcEnergyMap() {
         int width = outImage.width();
         int height = outImage.height();
-        double[][] energyMap = new double[width][height];
+        double[][] energyMap = new double[height][width];
 
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                energyMap[x][y] = calcEnergy(x, y);
+                energyMap[y][x] = calcEnergy(x, y);
             }
         }
 
@@ -348,11 +357,11 @@ public class SeamCarver {
     public double[][] calcNeighborMatrix(double[][] kernel) {
         int width = outImage.width();
         int height = outImage.height();
-        double[][] output = new double[width][height];
+        double[][] output = new double[height][width];
 
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                output[x][y] = applyKernel(x, y, kernel);
+                output[y][x] = applyKernel(x, y, kernel);
             }
         }
 
@@ -361,6 +370,7 @@ public class SeamCarver {
 
     private double applyKernel(int x, int y, double[][] kernel) {
         double result = 0;
+        double dr = 0, dg = 0, db = 0;
         int kernelWidth = kernel.length;
         int kernelHeight = kernel[0].length;
         int kernelHalfWidth = kernelWidth / 2;
@@ -375,11 +385,14 @@ public class SeamCarver {
                     int b = rgb.getBlue();
 
                     double kernelValue = kernel[i + kernelHalfWidth][j + kernelHalfHeight];
-                    result += Math.abs(kernelValue * r) + Math.abs(kernelValue * g) + Math.abs(kernelValue * b);
+
+                    dr += kernelValue * r;
+                    dg += kernelValue * g;
+                    db += kernelValue * b;
                 }
             }
         }
-
+        result = Math.sqrt(Math.pow(dr, 2) + Math.pow(dg, 2) + Math.pow(db, 2));
         return result;
     }
     public int[] findSeam(double[][] cumulativeMap) {
@@ -429,13 +442,40 @@ public class SeamCarver {
         int n = outImage.width();
         Picture output = new Picture(n - 1, m);
 
+        // 创建一个临时的图片副本用于展示删除的seam
+        Picture displayImage = new Picture(n, m);
+        for (int row = 0; row < m; row++) {
+            for (int col = 0; col < n; col++) {
+                displayImage.set(col, row, outImage.get(col, row));
+            }
+        }
+
+        // 在临时图片上将要删除的seam标记为黑色
         for (int row = 0; row < m; row++) {
             int colToRemove = seamIdx[row];
-            for (int col = 0; col < n - 1; col++) {
-                if (col < colToRemove) {
-                    output.set(col, row, outImage.get(col, row));
-                } else {
-                    output.set(col, row, outImage.get(col + 1, row));
+            displayImage.set(colToRemove, row, Color.BLACK);
+        }
+
+        // 展示这个标记了将要删除的seam的图片
+        displayPicture(displayImage);
+
+//        for (int row = 0; row < m; row++) {
+//            int colToRemove = seamIdx[row];
+//            for (int col = 0; col < n - 1; col++) {
+//                if (col < colToRemove) {
+//                    output.set(col, row, outImage.get(col, row));
+//                } else {
+//                    output.set(col, row, outImage.get(col + 1, row));
+//                }
+//            }
+//        }
+
+        for (int row = 0; row < m; row++) {
+            int colToRemove = seamIdx[row];
+            for (int col = 0, outputCol = 0; col < n; col++) {
+                if (col != colToRemove) {
+                    output.set(outputCol, row, outImage.get(col, row));
+                    outputCol++;
                 }
             }
         }
@@ -447,6 +487,22 @@ public class SeamCarver {
         int m = outImage.height();
         int n = outImage.width();
         Picture output = new Picture(n + 1, m);
+
+        Picture displayImage = new Picture(n, m);
+        for (int row = 0; row < m; row++) {
+            for (int col = 0; col < n; col++) {
+                displayImage.set(col, row, outImage.get(col, row));
+            }
+        }
+
+        // 在临时图片上将要删除的seam标记为黑色
+        for (int row = 0; row < m; row++) {
+            int colToRemove = seamIdx[row];
+            displayImage.set(colToRemove, row, Color.BLACK);
+        }
+
+        // 展示这个标记了将要删除的seam的图片
+        displayPicture(displayImage);
 
         for (int row = 0; row < m; row++) {
             int col = seamIdx[row];
@@ -499,7 +555,7 @@ public class SeamCarver {
             // 逆时针旋转
             for (int x = 0; x < n; x++) {
                 for (int y = 0; y < m; y++) {
-                    Color color = image.get(x, m - 1 - y);
+                    Color color = image.get(x, y);
                     output.set(y, n - 1 - x, color); // 逆时针旋转并翻转
                 }
             }
@@ -616,12 +672,50 @@ public class SeamCarver {
             }
         }
 
-        // 保存图像
+        // 准备保存图像的文件对象
         File outputFile = new File(filename);
+
+        // 确保父目录存在
+        File parentDir = outputFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs(); // 如果父目录不存在，则创建它
+        }
+
+        // 尝试保存图像
         try {
             ImageIO.write(bufferedImage, "jpg", outputFile); // 假设文件名以.jpg结尾
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    private JFrame frame;
+
+    public void frameini() {
+        // 初始化JFrame
+        frame = new JFrame();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
+
+    private void displayPicture(Picture image) {
+        BufferedImage bufferedImage = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
+        for (int col = 0; col < image.width(); col++) {
+            for (int row = 0; row < image.height(); row++) {
+                bufferedImage.setRGB(col, row, image.get(col, row).getRGB());
+            }
+        }
+
+        // 将BufferedImage转换为ImageIcon以便展示
+        ImageIcon imageIcon = new ImageIcon(bufferedImage);
+
+        // 创建一个带有图片的JLabel
+        JLabel jLabel = new JLabel(imageIcon);
+
+        // 每次显示新图片前，清除旧的内容
+        frame.getContentPane().removeAll();
+        frame.getContentPane().add(jLabel); // 添加新的内容
+
+        frame.pack(); // 调整窗口大小以适应图片
+        frame.setVisible(true); // 使窗口可见
+    }
 }
+
