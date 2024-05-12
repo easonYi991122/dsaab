@@ -641,6 +641,7 @@ public class SeamCarver {
 
         mask = output; // 更新遮罩数组
     }
+
     public int[] getObjectDimension() {
         int minRow = Integer.MAX_VALUE;
         int maxRow = Integer.MIN_VALUE;
@@ -663,6 +664,7 @@ public class SeamCarver {
 
         return new int[]{height, width}; // 返回高度和宽度
     }
+
     public void saveResult(String filename) {
         // 将Picture转换为BufferedImage
         BufferedImage bufferedImage = new BufferedImage(outImage.width(), outImage.height(), BufferedImage.TYPE_INT_RGB);
