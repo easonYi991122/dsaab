@@ -17,13 +17,15 @@ public class SeamCarverGUI extends JFrame {
         setSize(800, 600);
         setLayout(new BorderLayout());
 
-        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout());
 
         JButton uploadButton = new JButton("Upload Image");
         JButton carveButton = new JButton("Carve Image");
         JButton selectButton = new JButton("Select Region");
 
         imageLabel = new JLabel();
+        imageLabel.setHorizontalAlignment(JLabel.CENTER);
         JScrollPane scrollPane = new JScrollPane(imageLabel);
 
         uploadButton.addActionListener(this::uploadImage);
@@ -47,9 +49,11 @@ public class SeamCarverGUI extends JFrame {
             imagePath = "file:///" + file.getAbsolutePath().replace("\\", "/");
             try {
                 currentImage = ImageIO.read(file);
-                imageLabel.setIcon(new ImageIcon(currentImage));
+                ImageIcon imageIcon = new ImageIcon(currentImage);
+                imageLabel.setIcon(imageIcon);
+                pack();
             } catch (Exception ex) {
-                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error loading image: " + ex.getMessage(), "Image Load Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -57,14 +61,11 @@ public class SeamCarverGUI extends JFrame {
     private void carveImage(ActionEvent e) {
         if (imagePath != null) {
             SeamCarver sc = new SeamCarver(imagePath, 600, 800, protectMask, "");
-            // Assuming SeamCarver can update its processing to a Picture and display it
-            // For now, just open a new frame or update the existing JLabel with new Picture
         }
     }
 
     private void selectRegion(ActionEvent e) {
-        // Implement selection functionality, maybe using MouseAdapter to drag and select region
-        // Convert this region to a suitable mask format
+        // Implementation for selecting a region on the image
     }
 
     public static void main(String[] args) {
