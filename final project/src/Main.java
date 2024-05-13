@@ -4,9 +4,9 @@ public class Main {
         System.out.println("");
 
         // 正确的字符串声明和变量名称
-        String testFilename = "file:///D:/study/dsaab/final%20project/ex1.jpg";
+        String testFilename = "file:///D:/study/dsaab/final%20project/test1.png";
 
-        SeamCarver sc = new SeamCarver(testFilename, 800, 1500, "", "");
+        SeamCarver sc = new SeamCarver(testFilename, 300, 150, "", "");
 
         // Save or display the result
     }

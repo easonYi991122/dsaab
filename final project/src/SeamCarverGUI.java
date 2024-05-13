@@ -1,9 +1,9 @@
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
-import java.io.File;
-import javax.imageio.ImageIO;
+import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
+import java.io.File;
 
 public class SeamCarverGUI extends JFrame {
     private JLabel imageLabel;
@@ -54,13 +54,34 @@ public class SeamCarverGUI extends JFrame {
         }
     }
 
+//    private void carveImage(ActionEvent e) {
+//        if (imagePath != null) {
+//            SeamCarver sc = new SeamCarver(imagePath, 600, 800, protectMask, "");
+//            // Assuming SeamCarver can update its processing to a Picture and display it
+//            // For now, just open a new frame or update the existing JLabel with new Picture
+//
+//        }
+//    }
     private void carveImage(ActionEvent e) {
         if (imagePath != null) {
-            SeamCarver sc = new SeamCarver(imagePath, 600, 800, protectMask, "");
-            // Assuming SeamCarver can update its processing to a Picture and display it
-            // For now, just open a new frame or update the existing JLabel with new Picture
+            SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    SeamCarver sc = new SeamCarver(imagePath, 600, 800, protectMask, "");
+                    return null;
+                }
+
+//                @Override
+//                protected void process(List<BufferedImage> chunks) {
+//                    for (BufferedImage image : chunks) {
+//                        imageLabel.setIcon(new ImageIcon(image));
+//                    }
+//                }
+            };
+            worker.execute();
         }
     }
+
 
     private void selectRegion(ActionEvent e) {
         // Implement selection functionality, maybe using MouseAdapter to drag and select region

@@ -55,6 +55,7 @@ public class SeamCarver {
 
         frameini();
         start();
+        frame.dispose();
         saveResult("D:\\study\\dsaab\\final project\\out1.jpg");
     }
 
@@ -84,7 +85,7 @@ public class SeamCarver {
         }
     }
 
-    private void start() {
+    public void start() {
         if (this.object) {
             objectRemoval();
         } else {
@@ -719,7 +720,7 @@ public class SeamCarver {
             e.printStackTrace();
         }
     }
-    private JFrame frame;
+    public JFrame frame;
 
     public void frameini() {
         // 初始化JFrame
@@ -748,6 +749,14 @@ public class SeamCarver {
 
         frame.pack(); // 调整窗口大小以适应图片
         frame.setVisible(true); // 使窗口可见
+
+//        try {
+//            // 使当前线程暂停1毫秒
+//            Thread.sleep(10);
+//        } catch (InterruptedException e) {
+//            // 当Thread.sleep被中断时，它会抛出InterruptedException异常
+//            e.printStackTrace();
+//        }
     }
 }
 
