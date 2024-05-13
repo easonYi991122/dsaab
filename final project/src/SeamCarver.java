@@ -456,8 +456,11 @@ public class SeamCarver {
             displayImage.set(colToRemove, row, Color.BLACK);
         }
 
+        if(rotate_state == true) {
+            displayImage = rotateImage(displayImage, false);
+        }
         // 展示这个标记了将要删除的seam的图片
-        displayPicture(displayImage, rotate_state);
+        displayPicture(displayImage);
 
         for (int row = 0; row < m; row++) {
             int colToRemove = seamIdx[row];
@@ -524,8 +527,11 @@ public class SeamCarver {
             displayImage.set(colToRemove, row, Color.BLACK);
         }
 
+        if(rotate_state == true) {
+            displayImage = rotateImage(displayImage, false);
+        }
         // 展示这个标记了将要删除的seam的图片
-        displayPicture(displayImage, rotate_state);
+        displayPicture(displayImage);
 
         for (int row = 0; row < m; row++) {
             int col = seamIdx[row];
@@ -721,11 +727,7 @@ public class SeamCarver {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    private void displayPicture(Picture image ,boolean rotate_state) {
-
-        if(rotate_state == true) {
-            image = rotateImage(image, false);
-        }
+    private void displayPicture(Picture image) {
 
         BufferedImage bufferedImage = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         for (int col = 0; col < image.width(); col++) {
