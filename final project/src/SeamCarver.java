@@ -98,11 +98,11 @@ public class SeamCarver {
 
         // Remove columns
         if (deltaCol < 0) {
-            seamsRemoval(-deltaCol);
+            seamsRemoval(-deltaCol, false);
         }
         // Insert columns
         else if (deltaCol > 0) {
-            seamsInsertion(deltaCol);
+            seamsInsertion(deltaCol, false);
         }
 
         // Remove rows
@@ -111,7 +111,7 @@ public class SeamCarver {
             if (protect) {
                 mask = rotateMask(mask, true);
             }
-            seamsRemoval(-deltaRow);
+            seamsRemoval(-deltaRow, true);
             outImage = rotateImage(outImage, false);
         }
         // Insert rows
@@ -120,7 +120,7 @@ public class SeamCarver {
             if (protect) {
                 mask = rotateMask(mask, true);
             }
-            seamsInsertion(deltaRow);
+            seamsInsertion(deltaRow, true);
             outImage = rotateImage(outImage, false);
         }
     }
@@ -144,7 +144,7 @@ public class SeamCarver {
             applyMaskToEnergyMap(energyMap, mask, -constant);
             double[][] cumulativeMap = cumulativeMapForward(energyMap);
             int[] seamIdx = findSeam(cumulativeMap);
-            deleteSeam(seamIdx);
+            deleteSeam_draw(seamIdx, rotate);
             deleteSeamOnMask(seamIdx);
         }
 
@@ -155,7 +155,7 @@ public class SeamCarver {
             numPixels = inHeight - outImage.height();
         }
 
-        seamsInsertion(numPixels);
+        seamsInsertion(numPixels, rotate);
         if (rotate) {
             outImage = rotateImage(outImage, false);
         }
@@ -182,7 +182,7 @@ public class SeamCarver {
     }
 
     // seams removal
-    private void seamsRemoval(int numPixels) {
+    private void seamsRemoval(int numPixels, boolean rotate_state) {
         for (int i = 0; i < numPixels; i++) {
             double[][] energyMap = calcEnergyMap();
             if (protect) {
@@ -194,14 +194,14 @@ public class SeamCarver {
 
             //System.out.println(Arrays.stream(seamIdx).sum());
 
-            deleteSeam(seamIdx);
+            deleteSeam_draw(seamIdx, rotate_state);
             if (protect) {
                 deleteSeamOnMask(seamIdx);
             }
         }
     }
 
-    private void seamsInsertion(int numPixels) {
+    private void seamsInsertion(int numPixels, boolean rotate_state) {
         Picture tempImage = new Picture(outImage.width(), outImage.height());
         for (int col = 0; col < outImage.width(); col++) {
             for (int row = 0; row < outImage.height(); row++) {
@@ -227,7 +227,7 @@ public class SeamCarver {
             double[][] cumulativeMap = cumulativeMapBackward(energyMap);
             int[] seamIdx = findSeam(cumulativeMap);
             seamsRecord.add(seamIdx);
-            deleteSeam(seamIdx);
+            deleteSeam_pure(seamIdx);
             if (protect) {
                 deleteSeamOnMask(seamIdx);
             }
@@ -240,7 +240,7 @@ public class SeamCarver {
 
         for (int i = 0; i < seamsRecord.size(); i++) {
             int[] seam = seamsRecord.remove(0);
-            addSeam(seam);
+            addSeam(seam, rotate_state);
             if (protect) {
                 addSeamOnMask(seam);
             }
@@ -437,7 +437,7 @@ public class SeamCarver {
         return minIndex;
     }
 
-    public void deleteSeam(int[] seamIdx) {
+    public void deleteSeam_draw(int[] seamIdx, boolean rotate_state) {
         int m = outImage.height();
         int n = outImage.width();
         Picture output = new Picture(n - 1, m);
@@ -457,18 +457,41 @@ public class SeamCarver {
         }
 
         // 展示这个标记了将要删除的seam的图片
-        displayPicture(displayImage);
+        displayPicture(displayImage, rotate_state);
 
+        for (int row = 0; row < m; row++) {
+            int colToRemove = seamIdx[row];
+            for (int col = 0, outputCol = 0; col < n; col++) {
+                if (col != colToRemove) {
+                    output.set(outputCol, row, outImage.get(col, row));
+                    outputCol++;
+                }
+            }
+        }
+
+        outImage = output;
+    }
+    public void deleteSeam_pure(int[] seamIdx) {
+        int m = outImage.height();
+        int n = outImage.width();
+        Picture output = new Picture(n - 1, m);
+
+//        // 创建一个临时的图片副本用于展示删除的seam
+//        Picture displayImage = new Picture(n, m);
 //        for (int row = 0; row < m; row++) {
-//            int colToRemove = seamIdx[row];
-//            for (int col = 0; col < n - 1; col++) {
-//                if (col < colToRemove) {
-//                    output.set(col, row, outImage.get(col, row));
-//                } else {
-//                    output.set(col, row, outImage.get(col + 1, row));
-//                }
+//            for (int col = 0; col < n; col++) {
+//                displayImage.set(col, row, outImage.get(col, row));
 //            }
 //        }
+//
+//        // 在临时图片上将要删除的seam标记为黑色
+//        for (int row = 0; row < m; row++) {
+//            int colToRemove = seamIdx[row];
+//            displayImage.set(colToRemove, row, Color.BLACK);
+//        }
+//
+//        // 展示这个标记了将要删除的seam的图片
+//        displayPicture(displayImage);
 
         for (int row = 0; row < m; row++) {
             int colToRemove = seamIdx[row];
@@ -483,7 +506,7 @@ public class SeamCarver {
         outImage = output;
     }
 
-    public void addSeam(int[] seamIdx) {
+    public void addSeam(int[] seamIdx, boolean rotate_state) {
         int m = outImage.height();
         int n = outImage.width();
         Picture output = new Picture(n + 1, m);
@@ -502,7 +525,7 @@ public class SeamCarver {
         }
 
         // 展示这个标记了将要删除的seam的图片
-        displayPicture(displayImage);
+        displayPicture(displayImage, rotate_state);
 
         for (int row = 0; row < m; row++) {
             int col = seamIdx[row];
@@ -698,7 +721,12 @@ public class SeamCarver {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    private void displayPicture(Picture image) {
+    private void displayPicture(Picture image ,boolean rotate_state) {
+
+        if(rotate_state == true) {
+            image = rotateImage(image, false);
+        }
+
         BufferedImage bufferedImage = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         for (int col = 0; col < image.width(); col++) {
             for (int row = 0; row < image.height(); row++) {
