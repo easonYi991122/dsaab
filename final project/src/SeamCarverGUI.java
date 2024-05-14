@@ -47,7 +47,13 @@ public class SeamCarverGUI extends JFrame {
             imagePath = "file:///" + file.getAbsolutePath().replace("\\", "/");
             try {
                 currentImage = ImageIO.read(file);
-                imageLabel.setIcon(new ImageIcon(currentImage));
+
+                int width = this.getWidth();
+                int hight = this.getHeight();
+
+                Image scaledimage = currentImage.getScaledInstance(width,hight,Image.SCALE_SMOOTH);
+
+                imageLabel.setIcon(new ImageIcon(scaledimage));
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
