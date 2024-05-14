@@ -140,13 +140,16 @@ public class SeamCarver {
             rotate = true;
         }
 
+        double[][] energyMap = calcEnergyMap();
+        applyMaskToEnergyMap(energyMap, mask, -constant);
+
         while (maskHasNonZero()) {
-            double[][] energyMap = calcEnergyMap();
-            applyMaskToEnergyMap(energyMap, mask, -constant);
+
             double[][] cumulativeMap = cumulativeMapBackward(energyMap);
             int[] seamIdx = findSeam(cumulativeMap);
             deleteSeam_draw(seamIdx, rotate);
             deleteSeamOnMask(seamIdx);
+            energyMap = updateEnergyMap(energyMap, seamIdx);
         }
 
         int numPixels;
@@ -202,22 +205,22 @@ public class SeamCarver {
             energyMap = updateEnergyMap(energyMap, seamIdx);
         }
 
-//        for (int i = 0; i < numPixels; i++) {
-//            double[][] energyMap = calcEnergyMap();
-//            if (protect) {
-//                // 应用掩码，增加保护区域的能量值
-//                applyMaskToEnergyMap(energyMap, mask, constant);
-//            }
-//            double[][] cumulativeMap = cumulativeMapForward(energyMap);
-//            int[] seamIdx = findSeam(cumulativeMap);
-//
-//            //System.out.println(Arrays.stream(seamIdx).sum());
-//
-//            deleteSeam_draw(seamIdx, rotate_state);
-//            if (protect) {
-//                deleteSeamOnMask(seamIdx);
-//            }
-//        }
+        /*for (int i = 0; i < numPixels; i++) {
+            double[][] energyMap = calcEnergyMap();
+            if (protect) {
+                // 应用掩码，增加保护区域的能量值
+                applyMaskToEnergyMap(energyMap, mask, constant);
+            }
+            double[][] cumulativeMap = cumulativeMapForward(energyMap);
+            int[] seamIdx = findSeam(cumulativeMap);
+
+            //System.out.println(Arrays.stream(seamIdx).sum());
+
+            deleteSeam_draw(seamIdx, rotate_state);
+            if (protect) {
+                deleteSeamOnMask(seamIdx);
+            }
+        }*/
     }
 
     private void seamsInsertion(int numPixels, boolean rotate_state) {
@@ -238,11 +241,13 @@ public class SeamCarver {
 
         List<int[]> seamsRecord = new ArrayList<>();
 
+        double[][] energyMap = calcEnergyMap();
+        if (protect) {
+            applyMaskToEnergyMap(energyMap, mask, constant);
+        }
+
         for (int i = 0; i < numPixels; i++) {
-            double[][] energyMap = calcEnergyMap();
-            if (protect) {
-                applyMaskToEnergyMap(energyMap, mask, constant);
-            }
+
             double[][] cumulativeMap = cumulativeMapBackward(energyMap);
             int[] seamIdx = findSeam(cumulativeMap);
             seamsRecord.add(seamIdx);
@@ -250,6 +255,7 @@ public class SeamCarver {
             if (protect) {
                 deleteSeamOnMask(seamIdx);
             }
+            energyMap = updateEnergyMap(energyMap, seamIdx);
         }
 
         outImage = tempImage;
@@ -289,14 +295,22 @@ public class SeamCarver {
         for (int row = 0; row < m; row++) {
             int colToRemove = seamIdx[row];
             for (int col = 0; col < n; col++) {
-                if (col < colToRemove - 1) {
+                if (col < colToRemove) {
                     output[row][col] = energyMap[row][col];
-                } else if (col < colToRemove + 1) {
-                    output[row][col] = calcEnergy(col, row);
                 } else {
                     output[row][col] = energyMap[row][col + 1];
                 }
             }
+
+            int colToChange1 = colToRemove - 1;
+            if(colToChange1 >= 0)
+                if(Math.abs(output[row][colToChange1]) < constant)
+                    output[row][colToChange1] = calcEnergy(colToChange1, row);
+
+            int colToChange2 = colToRemove;
+            if(colToChange2 < n)
+                if(Math.abs(output[row][colToChange2]) < constant)
+                    output[row][colToChange2] = calcEnergy(colToChange2, row);
         }
 
         return output;
