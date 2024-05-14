@@ -88,7 +88,6 @@ public class SeamCarverGUI extends JFrame {
         // Convert this region to a suitable mask format
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(SeamCarverGUI::new);
-    }
+    //public static void main(String[] args) {
+        //SwingUtilities.invokeLater(SeamCarverGUI::new);}
 }
