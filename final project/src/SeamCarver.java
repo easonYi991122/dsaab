@@ -16,7 +16,7 @@ public class SeamCarver {
     private Picture inImage;
     private int inHeight;
     private int inWidth;
-    private Picture outImage;
+    public static Picture outImage;
     private int outHeight;
     private int outWidth;
     private boolean object;
@@ -56,7 +56,6 @@ public class SeamCarver {
         frameini();
         start();
 //        frame.dispose();
-        saveResult("D:\\study\\dsaab\\final project\\out1.jpg");
     }
 
     public double[][] readMask(String objectMask) {
@@ -747,7 +746,7 @@ public class SeamCarver {
         return new int[]{height, width}; // 返回高度和宽度
     }
 
-    public void saveResult(String filename) {
+    public static void saveResult(String filename) {
         // 将Picture转换为BufferedImage
         BufferedImage bufferedImage = new BufferedImage(outImage.width(), outImage.height(), BufferedImage.TYPE_INT_RGB);
         for (int col = 0; col < outImage.width(); col++) {
@@ -755,6 +754,7 @@ public class SeamCarver {
                 bufferedImage.setRGB(col, row, outImage.get(col, row).getRGB());
             }
         }
+
 
         // 准备保存图像的文件对象
         File outputFile = new File(filename);

@@ -8,7 +8,9 @@ import java.io.File;
 public class SeamCarverGUI extends JFrame {
     private JLabel imageLabel;
     private BufferedImage currentImage;
-    private String imagePath;
+    public String imagePath;
+    public String savePath;
+    public boolean isSelected;
     private String protectMask = "";
 
     public SeamCarverGUI() {
@@ -43,7 +45,9 @@ public class SeamCarverGUI extends JFrame {
     private void uploadImage(ActionEvent e) {
         JFileChooser fileChooser = new JFileChooser();
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            isSelected = true;
             File file = fileChooser.getSelectedFile();
+            savePath = file.getAbsolutePath();
             imagePath = "file:///" + file.getAbsolutePath().replace("\\", "/");
             try {
                 currentImage = ImageIO.read(file);
