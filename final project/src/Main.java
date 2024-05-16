@@ -12,7 +12,7 @@ public class Main {
             long startTime = System.nanoTime();
 
             String testFilename = seam.imagePath;
-            SeamCarver sc = new SeamCarver(testFilename, 500, 800, seam.revisedMaskPath, "");
+            SeamCarver sc = new SeamCarver(testFilename, 500, 800, seam.maskPath, "");
             SeamCarver.saveResult(seam.savePath);
 
             // 记录结束时间以及展示
