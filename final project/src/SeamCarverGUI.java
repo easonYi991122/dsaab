@@ -12,7 +12,8 @@ public class SeamCarverGUI extends JFrame {
     public String imagePath;
     public String saveProtectedPath;
     public String protectedMaskPath;
-    public String revisedProtectedMaskPath;
+
+    // public String revisedProtectedMaskPath;
     public boolean isSelected;
     private Rectangle selectedArea;
 
