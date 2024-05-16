@@ -10,11 +10,10 @@ public class SeamCarverGUI extends JFrame {
     private MyImageLabel imageLabel;
     private BufferedImage currentImage;
     public String imagePath;
-    public String savePath;
-    public String maskPath;
-    public String revisedMaskPath;
+    public String saveProtectedPath;
+    public String protectedMaskPath;
+    public String revisedProtectedMaskPath;
     public boolean isSelected;
-    private String protectMask = "";
     private Rectangle selectedArea;
 
     class MyImageLabel extends JLabel {
@@ -64,7 +63,7 @@ public class SeamCarverGUI extends JFrame {
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             isSelected = true;
             File file = fileChooser.getSelectedFile();
-            savePath = file.getAbsolutePath();
+            saveProtectedPath = file.getAbsolutePath();
             imagePath = "file:///" + file.getAbsolutePath().replace("\\", "/");
             try {
                 currentImage = ImageIO.read(file);
@@ -86,7 +85,7 @@ public class SeamCarverGUI extends JFrame {
             SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
                 @Override
                 protected Void doInBackground() throws Exception {
-                    SeamCarver sc = new SeamCarver(imagePath, 600, 800, protectMask, "");
+                    SeamCarver sc = new SeamCarver(imagePath, 600, 800, protectedMaskPath, "");
                     return null;
                 }
             };
@@ -103,7 +102,7 @@ public class SeamCarverGUI extends JFrame {
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File directory = fileChooser.getSelectedFile();
             String filename = "mask.jpg";
-            maskPath = new File(directory, filename).getAbsolutePath();
+            protectedMaskPath = new File(directory, filename).getAbsolutePath();
 
             MouseAdapter mouseAdapter = new MouseAdapter() {
                 Point start;
@@ -123,7 +122,7 @@ public class SeamCarverGUI extends JFrame {
                 @Override
                 public void mouseReleased(MouseEvent e) {
                     updateSelectionArea(e);
-                    generateMaskAndSave(savePath);
+                    generateMaskAndSave(saveProtectedPath);
                     imageLabel.removeMouseListener(this);
                     imageLabel.removeMouseMotionListener(this);
                     selectedArea = null; // Clear the rectangle after saving
@@ -164,14 +163,14 @@ public class SeamCarverGUI extends JFrame {
             }
 
             try {
-                File outputFile = new File(maskPath);
+                File outputFile = new File(protectedMaskPath);
                 ImageIO.write(maskImage, "jpg", outputFile);
-                System.out.println("Mask image saved as " + maskPath);
+                System.out.println("Mask image saved as " + protectedMaskPath);
             } catch (IOException ex) {
                 System.err.println("Error saving the mask image: " + ex.getMessage());
             }
 
-            revisedMaskPath = "file:///" + maskPath.replace("\\", "/");
+            // revisedMaskPath = "file:///" + maskPath.replace("\\", "/");
         }
     }
 }

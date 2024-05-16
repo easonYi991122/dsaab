@@ -12,8 +12,8 @@ public class Main {
             long startTime = System.nanoTime();
 
             String testFilename = seam.imagePath;
-            SeamCarver sc = new SeamCarver(testFilename, 500, 800, seam.maskPath, "");
-            SeamCarver.saveResult(seam.savePath);
+            SeamCarver sc = new SeamCarver(testFilename, 500, 800, seam.protectedMaskPath, "");
+            SeamCarver.saveResult(seam.saveProtectedPath);
 
             // 记录结束时间以及展示
             // **但是我不知道为什么结果无法输出**
