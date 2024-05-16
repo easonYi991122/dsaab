@@ -23,7 +23,7 @@ public class SeamCarverGUI extends JFrame {
             super.paintComponent(g);
             if (selectedArea != null) {
                 Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setColor(Color.RED);
+                g2d.setColor(Color.BLACK);
                 g2d.setStroke(new BasicStroke(2));
                 g2d.draw(selectedArea);
                 g2d.dispose();
