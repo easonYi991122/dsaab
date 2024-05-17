@@ -16,7 +16,7 @@ public class SeamCarver {
     private Picture inImage;
     private int inHeight;
     private int inWidth;
-    private Picture outImage;
+    private static Picture outImage;
     private int outHeight;
     private int outWidth;
     private boolean object;
@@ -25,7 +25,7 @@ public class SeamCarver {
     private double[][] kernelYLeft;
     private double[][] kernelYRight;
     private double[][] mask;
-    private final double constant = 1000;
+    private final double constant = 10000;
 
     public SeamCarver(String filename, int outHeight, int outWidth, String protectMask, String objectMask) {
         this.outHeight = outHeight;
@@ -73,7 +73,10 @@ public class SeamCarver {
                     Color color = new Color(img.getRGB(x, y));
                     // 计算灰度值
                     double gray = 0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue();
-                    mask[y][x] = gray;
+                    if(gray > 1)
+                        mask[y][x] = 1;
+                    else
+                        mask[y][x] = 0;
                 }
             }
 
@@ -179,6 +182,7 @@ public class SeamCarver {
         for (int i = 0; i < energyMap.length; i++) {
             for (int j = 0; j < energyMap[i].length; j++) {
                 if (mask[i][j] > 0) {
+                    energyMap[i][j] += 50;
                     energyMap[i][j] *= factor; // 将掩码非零位置的能量值乘以指定的因子
                 }
             }
@@ -199,9 +203,9 @@ public class SeamCarver {
             //System.out.println(Arrays.stream(seamIdx).sum());
 
             deleteSeam_draw(seamIdx, rotate_state);
-            if (protect) {
+            /*if (protect) {
                 deleteSeamOnMask(seamIdx);
-            }
+            }*/
             energyMap = updateEnergyMap(energyMap, seamIdx);
         }
 
@@ -747,7 +751,7 @@ public class SeamCarver {
         return new int[]{height, width}; // 返回高度和宽度
     }
 
-    public void saveResult(String filename) {
+    public static void saveResult(String filename) {
         // 将Picture转换为BufferedImage
         BufferedImage bufferedImage = new BufferedImage(outImage.width(), outImage.height(), BufferedImage.TYPE_INT_RGB);
         for (int col = 0; col < outImage.width(); col++) {
