@@ -88,7 +88,9 @@ public class SeamCarverGUI extends JFrame {
             SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
                 @Override
                 protected Void doInBackground() throws Exception {
-                    SeamCarver sc = new SeamCarver(imagePath, 600, 800, protectedMaskPath, "");
+                    String maskPath = protectedMaskPath;
+                    if(protectedMaskPath==null)    maskPath = "";
+                    SeamCarver sc = new SeamCarver(imagePath, 600, 800, maskPath, "");
                     return null;
                 }
             };
