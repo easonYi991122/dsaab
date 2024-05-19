@@ -18,6 +18,8 @@ public class SeamCarverGUI extends JFrame {
     // public String revisedProtectedMaskPath;
     public boolean isSelected;
     private Rectangle selectedArea;
+    private double scaleX;
+    private double scaleY;
 
     class MyImageLabel extends JLabel {
         @Override
@@ -66,18 +68,20 @@ public class SeamCarverGUI extends JFrame {
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             isSelected = true;
             File file = fileChooser.getSelectedFile();
-            saveProtectedPath = file.getAbsolutePath();
             imagePath = "file:///" + file.getAbsolutePath().replace("\\", "/");
             try {
                 currentImage = ImageIO.read(file);
 
-                int width = this.getWidth();
-                int hight = this.getHeight();
+                int width = imageLabel.getWidth();
+                int height = imageLabel.getHeight();
 
-                Image scaledimage = currentImage.getScaledInstance(width,hight,Image.SCALE_SMOOTH);
+                // Calculate scaling factors
+                scaleX = (double) currentImage.getWidth() / width;
+                scaleY = (double) currentImage.getHeight() / height;
 
-                imageLabel.setIcon(new ImageIcon(scaledimage));
-            } catch (Exception ex) {
+                Image scaledImage = currentImage.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                imageLabel.setIcon(new ImageIcon(scaledImage));
+            } catch (IOException ex) {
                 ex.printStackTrace();
             }
         }
@@ -85,6 +89,7 @@ public class SeamCarverGUI extends JFrame {
 
     private void carveImage(ActionEvent e) {
         if (imagePath != null) {
+            long startTime = System.nanoTime();
             SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
                 @Override
                 protected Void doInBackground() throws Exception {
@@ -95,9 +100,23 @@ public class SeamCarverGUI extends JFrame {
                 }
             };
             worker.execute();
+            long endTime = System.nanoTime();
+            TimeMeasure(startTime, endTime);
         }
     }
 
+    private static void TimeMeasure(long startTime, long endTime){
+
+        // 计算耗时（单位：纳秒）
+        long duration = endTime - startTime;
+
+        // 将纳秒转换为毫秒
+        double durationInMillis = duration / 1_000_000.0;
+
+        // 输出耗时
+        System.out.println("Function execution time: " + duration + " nanoseconds");
+        System.out.println("Function execution time: " + durationInMillis + " milliseconds");
+    }
 
     private void selectRegion(ActionEvent e) {
         JFileChooser fileChooser = new JFileChooser();
@@ -130,7 +149,6 @@ public class SeamCarverGUI extends JFrame {
                     generateMaskAndSave(saveProtectedPath);
                     imageLabel.removeMouseListener(this);
                     imageLabel.removeMouseMotionListener(this);
-                    selectedArea = null; // Clear the rectangle after saving
                     imageLabel.repaint();
                 }
 
@@ -155,14 +173,24 @@ public class SeamCarverGUI extends JFrame {
         if (currentImage != null) {
             int imgWidth = currentImage.getWidth();
             int imgHeight = currentImage.getHeight();
+            double[][] mask = new double[imgWidth][imgHeight];
             BufferedImage maskImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
 
+            // Map coordinates back to the original image size
+            int boxX = (int) (selectedArea.x * scaleX);
+            int boxY = (int) (selectedArea.y * scaleY);
+            int boxWidth = (int) (selectedArea.width * scaleX);
+            int boxHeight = (int) (selectedArea.height * scaleY);
+
+            // Populate the mask array and create the mask image
             for (int x = 0; x < imgWidth; x++) {
                 for (int y = 0; y < imgHeight; y++) {
-                    if (selectedArea.contains(x, y)) {
-                        maskImage.setRGB(x, y, Color.WHITE.getRGB());
+                    if (x >= boxX && x < boxX + boxWidth && y >= boxY && y < boxY + boxHeight) {
+                        mask[x][y] = 1.0;
+                        maskImage.setRGB(x, y, Color.WHITE.getRGB()); // White for the selected area
                     } else {
-                        maskImage.setRGB(x, y, Color.BLACK.getRGB());
+                        mask[x][y] = 0.0;
+                        maskImage.setRGB(x, y, Color.BLACK.getRGB()); // Black for non-selected areas
                     }
                 }
             }
