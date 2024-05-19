@@ -10,10 +10,9 @@ public class Main {
         if(seam.isSelected) {
             // 记录开始时间
             long startTime = System.nanoTime();
-            String maskPath = seam.protectedMaskPath;
+
             String testFilename = seam.imagePath;
-            if(seam.protectedMaskPath==null)    maskPath = "";
-            SeamCarver scGUI = new SeamCarver(testFilename, 500, 800, maskPath, "");
+            SeamCarver scGUI = new SeamCarver(testFilename, 500, 800, seam.protectedMaskPath, "");
             SeamCarver.saveResult(seam.saveProtectedPath);
 
             // 记录结束时间以及展示

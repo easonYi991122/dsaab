@@ -203,9 +203,9 @@ public class SeamCarver {
             //System.out.println(Arrays.stream(seamIdx).sum());
 
             deleteSeam_draw(seamIdx, rotate_state);
-            /*if (protect) {
+            if (protect) {
                 deleteSeamOnMask(seamIdx);
-            }*/
+            }
             energyMap = updateEnergyMap(energyMap, seamIdx);
         }
 
@@ -667,14 +667,14 @@ public class SeamCarver {
             // 逆时针旋转
             for (int x = 0; x < m; x++) {
                 for (int y = 0; y < n; y++) {
-                    output[y][m - 1 - x] = mask[x][n - 1 - y]; // 逆时针旋转并翻转
+                    output[n - 1 - y][x] = mask[x][y]; // 逆时针旋转
                 }
             }
         } else {
             // 顺时针旋转
             for (int x = 0; x < m; x++) {
                 for (int y = 0; y < n; y++) {
-                    output[n - 1 - y][x] = mask[x][y]; // 顺时针旋转
+                    output[y][m - 1 - x] = mask[x][y]; // 顺时针旋转
                 }
             }
         }
