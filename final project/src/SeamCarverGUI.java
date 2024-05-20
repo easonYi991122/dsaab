@@ -14,6 +14,7 @@ public class SeamCarverGUI extends JFrame {
     private BufferedImage currentImage;
     private double scaleX, scaleY;
     public String imagePath;
+    public String savedImagePath; //Used in SeamCarver
     public String protectedMaskPath;
     public String removalMaskPath;
     private Rectangle selectedArea;
@@ -135,6 +136,17 @@ public class SeamCarverGUI extends JFrame {
                 try {
                     int targetWidth = Integer.parseInt(widthField.getText());
                     int targetHeight = Integer.parseInt(heightField.getText());
+                    BufferedImage savedImage = new BufferedImage(targetWidth,targetHeight,BufferedImage.TYPE_INT_RGB);
+
+                    JFileChooser fileChooser = new JFileChooser();
+                    fileChooser.setDialogTitle("Select Directory to Save the Carved Image");
+                    fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                    int userSelection = fileChooser.showSaveDialog(this);
+                    if (userSelection == JFileChooser.APPROVE_OPTION) {
+                        File directory = fileChooser.getSelectedFile();
+                        savedImagePath = new File(directory,"savedImage.jpg").getAbsolutePath();
+                    }
+                    //What we can do in the GUI so far
 
                     long startTime = System.nanoTime();
                     SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
@@ -143,6 +155,7 @@ public class SeamCarverGUI extends JFrame {
                             if(protectedMaskPath == null) protectedMaskPath = "";
                             if(removalMaskPath == null) removalMaskPath = "";
                             SeamCarver sc = new SeamCarver(imagePath, targetHeight, targetWidth, protectedMaskPath, removalMaskPath);
+                            ImageIO.write(savedImage,"jpg", new File(savedImagePath));
                             return null;
                         }
                     };
