@@ -14,10 +14,12 @@ public class SeamCarverGUI extends JFrame {
     private double scaleX, scaleY;
     public String imagePath;
     public String protectedMaskPath;
+    public String removalMaskPath;
     public boolean isSelected;
-    private String protectMask = "";
     private Rectangle selectedArea;
     private boolean[][] brushSelection;
+    private boolean isProtect = false;
+    private boolean isRemoval = false;
 
     class MyImageLabel extends JLabel {
         @Override
@@ -55,18 +57,21 @@ public class SeamCarverGUI extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout());
         JButton uploadButton = new JButton("Upload Image");
         JButton carveButton = new JButton("Carve Image");
-        JButton selectButton = new JButton("Select Region");
+        JButton protectButton = new JButton("Protect Region");
+        JButton removalButton = new JButton("Remove Region");
 
         imageLabel = new MyImageLabel();
         JScrollPane scrollPane = new JScrollPane(imageLabel);
 
         uploadButton.addActionListener(this::uploadImage);
         carveButton.addActionListener(this::carveImage);
-        selectButton.addActionListener(this::selectRegion);
+        protectButton.addActionListener(this::protectRegion);
+        removalButton.addActionListener(this::removeRegion);
 
         buttonPanel.add(uploadButton);
         buttonPanel.add(carveButton);
-        buttonPanel.add(selectButton);
+        buttonPanel.add(protectButton);
+        buttonPanel.add(removalButton);
 
         add(buttonPanel, BorderLayout.SOUTH);
         add(scrollPane, BorderLayout.CENTER);
@@ -100,19 +105,41 @@ public class SeamCarverGUI extends JFrame {
 
     private void carveImage(ActionEvent e) {
         if (imagePath != null) {
-            long startTime = System.nanoTime();
-            SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    String maskPath = protectedMaskPath;
-                    if(protectedMaskPath==null)    maskPath = "";
-                    SeamCarver sc = new SeamCarver(imagePath, 600, 800, maskPath, "");
-                    return null;
+            // Show a dialog to input the desired size for the carved image
+            JTextField widthField = new JTextField(5);
+            JTextField heightField = new JTextField(5);
+            JPanel sizePanel = new JPanel();
+            sizePanel.add(new JLabel("Width:"));
+            sizePanel.add(widthField);
+            sizePanel.add(Box.createHorizontalStrut(15)); // a spacer
+            sizePanel.add(new JLabel("Height:"));
+            sizePanel.add(heightField);
+
+            int result = JOptionPane.showConfirmDialog(null, sizePanel,
+                    "Please Enter Desired Size", JOptionPane.OK_CANCEL_OPTION);
+            if (result == JOptionPane.OK_OPTION) {
+                try {
+                    int targetWidth = Integer.parseInt(widthField.getText());
+                    int targetHeight = Integer.parseInt(heightField.getText());
+
+                    long startTime = System.nanoTime();
+                    SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            if(protectedMaskPath == null) protectedMaskPath = "";
+                            if(removalMaskPath == null) removalMaskPath = "";
+                            SeamCarver sc = new SeamCarver(imagePath, targetWidth, targetHeight, protectedMaskPath, removalMaskPath);
+                            return null;
+                        }
+                    };
+                    worker.execute();
+                    long endTime = System.nanoTime();
+                    TimeMeasure(startTime, endTime);
+
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid size entered.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
-            };
-            worker.execute();
-            long endTime = System.nanoTime();
-            TimeMeasure(startTime, endTime);
+            }
         }
     }
 
@@ -129,7 +156,33 @@ public class SeamCarverGUI extends JFrame {
         System.out.println("Function execution time: " + durationInMillis + " milliseconds");
     }
 
-    private void selectRegion(ActionEvent e) {
+    private void protectRegion(ActionEvent e) {
+        // Show dialog to choose selection method
+        isProtect = true;
+        JDialog selectionDialog = new JDialog(this, "Select Method", true);
+        selectionDialog.setLayout(new FlowLayout());
+        JButton rectButton = new JButton("Rectangular Selection");
+        JButton brushButton = new JButton("Brush Selection");
+
+        rectButton.addActionListener(ev -> {
+            selectionDialog.dispose();
+            initiateRectangularSelection();
+        });
+
+        brushButton.addActionListener(ev -> {
+            selectionDialog.dispose();
+            initiateBrushSelection();
+        });
+
+        selectionDialog.add(rectButton);
+        selectionDialog.add(brushButton);
+        selectionDialog.pack();
+        selectionDialog.setLocationRelativeTo(this);
+        selectionDialog.setVisible(true);
+    }
+
+    private void removeRegion(ActionEvent e) {
+        isRemoval = true;
         // Show dialog to choose selection method
         JDialog selectionDialog = new JDialog(this, "Select Method", true);
         selectionDialog.setLayout(new FlowLayout());
@@ -160,7 +213,8 @@ public class SeamCarverGUI extends JFrame {
         int userSelection = fileChooser.showSaveDialog(this);
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File directory = fileChooser.getSelectedFile();
-            protectedMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
+            if(isProtect) protectedMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
+            if(isRemoval) removalMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
             MouseAdapter mouseAdapter = new MouseAdapter() {
                 Point start;
 
@@ -179,10 +233,10 @@ public class SeamCarverGUI extends JFrame {
                 @Override
                 public void mouseReleased(MouseEvent e) {
                     updateSelectionArea(e);
-                    generateMaskAndSave(protectedMaskPath);
+                    if(isProtect)   generateMaskAndSave(protectedMaskPath);
+                    if(isRemoval)   generateMaskAndSave(removalMaskPath);
                     imageLabel.removeMouseListener(this);
                     imageLabel.removeMouseMotionListener(this);
-                    selectedArea = null; // Clear the rectangle after saving
                     imageLabel.repaint();
                 }
 
@@ -210,7 +264,8 @@ public class SeamCarverGUI extends JFrame {
         int userSelection = fileChooser.showSaveDialog(this);
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File directory = fileChooser.getSelectedFile();
-            protectedMaskPath = new File(directory, "maskBrush.jpg").getAbsolutePath();
+            if(isProtect) protectedMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
+            if(isRemoval) removalMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
             brushSelection = new boolean[currentImage.getWidth()][currentImage.getHeight()];
 
             MouseAdapter mouseAdapter = new MouseAdapter() {
@@ -222,10 +277,10 @@ public class SeamCarverGUI extends JFrame {
 
                 @Override
                 public void mouseReleased(MouseEvent e) {
-                    generateBrushMaskAndSave(protectedMaskPath);
+                    if(isProtect)   generateBrushMaskAndSave(protectedMaskPath);
+                    if(isRemoval)   generateBrushMaskAndSave(removalMaskPath);
                     imageLabel.removeMouseListener(this);
                     imageLabel.removeMouseMotionListener(this);
-                    brushSelection = null; // Clear the selection after saving
                     imageLabel.repaint();
                 }
 
@@ -271,7 +326,7 @@ public class SeamCarverGUI extends JFrame {
             }
 
             try {
-                File outputFile = new File(protectedMaskPath);
+                File outputFile = new File(filename);
                 ImageIO.write(maskImage, "jpg", outputFile);
                 System.out.println("Mask image saved as " + filename);
             } catch (IOException ex) {
@@ -305,7 +360,7 @@ public class SeamCarverGUI extends JFrame {
             }
 
             try {
-                File outputFile = new File(protectedMaskPath);
+                File outputFile = new File(filename);
                 ImageIO.write(maskImage, "jpg", outputFile);
                 System.out.println("Mask image saved as " + filename);
             } catch (IOException ex) {
