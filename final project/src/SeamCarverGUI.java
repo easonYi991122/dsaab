@@ -11,15 +11,13 @@ import java.io.IOException;
 public class SeamCarverGUI extends JFrame {
     private MyImageLabel imageLabel;
     private BufferedImage currentImage;
+    private double scaleX, scaleY;
     public String imagePath;
-    public String saveProtectedPath;
     public String protectedMaskPath;
-
-    // public String revisedProtectedMaskPath;
     public boolean isSelected;
+    private String protectMask = "";
     private Rectangle selectedArea;
-    private double scaleX;
-    private double scaleY;
+    private boolean[][] brushSelection;
 
     class MyImageLabel extends JLabel {
         @Override
@@ -27,13 +25,26 @@ public class SeamCarverGUI extends JFrame {
             super.paintComponent(g);
             if (selectedArea != null) {
                 Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setColor(Color.BLACK);
+                g2d.setColor(Color.RED);
                 g2d.setStroke(new BasicStroke(2));
                 g2d.draw(selectedArea);
                 g2d.dispose();
             }
+            if (brushSelection != null) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setColor(new Color(255, 0, 0, 128));
+                for (int x = 0; x < brushSelection.length; x++) {
+                    for (int y = 0; y < brushSelection[x].length; y++) {
+                        if (brushSelection[x][y]) {
+                            g2d.fillRect((int) (x / scaleX), (int) (y / scaleY), 1, 1);
+                        }
+                    }
+                }
+                g2d.dispose();
+            }
         }
     }
+
 
     public SeamCarverGUI() {
         super("Seam Carver GUI");
@@ -119,15 +130,37 @@ public class SeamCarverGUI extends JFrame {
     }
 
     private void selectRegion(ActionEvent e) {
+        // Show dialog to choose selection method
+        JDialog selectionDialog = new JDialog(this, "Select Method", true);
+        selectionDialog.setLayout(new FlowLayout());
+        JButton rectButton = new JButton("Rectangular Selection");
+        JButton brushButton = new JButton("Brush Selection");
+
+        rectButton.addActionListener(ev -> {
+            selectionDialog.dispose();
+            initiateRectangularSelection();
+        });
+
+        brushButton.addActionListener(ev -> {
+            selectionDialog.dispose();
+            initiateBrushSelection();
+        });
+
+        selectionDialog.add(rectButton);
+        selectionDialog.add(brushButton);
+        selectionDialog.pack();
+        selectionDialog.setLocationRelativeTo(this);
+        selectionDialog.setVisible(true);
+    }
+
+    private void initiateRectangularSelection() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Select Directory to Save Mask");
         fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         int userSelection = fileChooser.showSaveDialog(this);
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File directory = fileChooser.getSelectedFile();
-            String filename = "mask.jpg";
-            protectedMaskPath = new File(directory, filename).getAbsolutePath();
-
+            protectedMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
             MouseAdapter mouseAdapter = new MouseAdapter() {
                 Point start;
 
@@ -146,9 +179,10 @@ public class SeamCarverGUI extends JFrame {
                 @Override
                 public void mouseReleased(MouseEvent e) {
                     updateSelectionArea(e);
-                    generateMaskAndSave(saveProtectedPath);
+                    generateMaskAndSave(protectedMaskPath);
                     imageLabel.removeMouseListener(this);
                     imageLabel.removeMouseMotionListener(this);
+                    selectedArea = null; // Clear the rectangle after saving
                     imageLabel.repaint();
                 }
 
@@ -169,28 +203,69 @@ public class SeamCarverGUI extends JFrame {
         }
     }
 
-    private void generateMaskAndSave(String filename) {
+    private void initiateBrushSelection() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select Directory to Save Mask");
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        int userSelection = fileChooser.showSaveDialog(this);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File directory = fileChooser.getSelectedFile();
+            protectedMaskPath = new File(directory, "maskBrush.jpg").getAbsolutePath();
+            brushSelection = new boolean[currentImage.getWidth()][currentImage.getHeight()];
+
+            MouseAdapter mouseAdapter = new MouseAdapter() {
+                @Override
+                public void mouseDragged(MouseEvent e) {
+                    updateBrushSelection(e.getPoint());
+                    imageLabel.repaint();
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    generateBrushMaskAndSave(protectedMaskPath);
+                    imageLabel.removeMouseListener(this);
+                    imageLabel.removeMouseMotionListener(this);
+                    brushSelection = null; // Clear the selection after saving
+                    imageLabel.repaint();
+                }
+
+                private void updateBrushSelection(Point point) {
+                    int brushSize = 10;
+                    int xStart = Math.max(0, (int) (point.x * scaleX) - brushSize / 2);
+                    int xEnd = Math.min(currentImage.getWidth(), (int) (point.x * scaleX) + brushSize / 2);
+                    int yStart = Math.max(0, (int) (point.y * scaleY) - brushSize / 2);
+                    int yEnd = Math.min(currentImage.getHeight(), (int) (point.y * scaleY) + brushSize / 2);
+
+                    for (int x = xStart; x < xEnd; x++) {
+                        for (int y = yStart; y < yEnd; y++) {
+                            brushSelection[x][y] = true;
+                        }
+                    }
+                }
+            };
+
+            imageLabel.addMouseListener(mouseAdapter);
+            imageLabel.addMouseMotionListener(mouseAdapter);}
+        else {
+            System.out.println("Directory selection was cancelled.");
+        }
+    }
+
+    private void generateBrushMaskAndSave(String filename) {
         if (currentImage != null) {
             int imgWidth = currentImage.getWidth();
             int imgHeight = currentImage.getHeight();
             double[][] mask = new double[imgWidth][imgHeight];
             BufferedImage maskImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
 
-            // Map coordinates back to the original image size
-            int boxX = (int) (selectedArea.x * scaleX);
-            int boxY = (int) (selectedArea.y * scaleY);
-            int boxWidth = (int) (selectedArea.width * scaleX);
-            int boxHeight = (int) (selectedArea.height * scaleY);
-
-            // Populate the mask array and create the mask image
             for (int x = 0; x < imgWidth; x++) {
                 for (int y = 0; y < imgHeight; y++) {
-                    if (x >= boxX && x < boxX + boxWidth && y >= boxY && y < boxY + boxHeight) {
+                    if (brushSelection[x][y]) {
                         mask[x][y] = 1.0;
-                        maskImage.setRGB(x, y, Color.WHITE.getRGB()); // White for the selected area
+                        maskImage.setRGB(x, y, Color.WHITE.getRGB());
                     } else {
                         mask[x][y] = 0.0;
-                        maskImage.setRGB(x, y, Color.BLACK.getRGB()); // Black for non-selected areas
+                        maskImage.setRGB(x, y, Color.BLACK.getRGB());
                     }
                 }
             }
@@ -198,12 +273,44 @@ public class SeamCarverGUI extends JFrame {
             try {
                 File outputFile = new File(protectedMaskPath);
                 ImageIO.write(maskImage, "jpg", outputFile);
-                System.out.println("Mask image saved as " + protectedMaskPath);
+                System.out.println("Mask image saved as " + filename);
             } catch (IOException ex) {
                 System.err.println("Error saving the mask image: " + ex.getMessage());
             }
+        }
+    }
 
-            // revisedMaskPath = "file:///" + maskPath.replace("\\", "/");
+    private void generateMaskAndSave(String filename) {
+        if (currentImage != null) {
+            int imgWidth = currentImage.getWidth();
+            int imgHeight = currentImage.getHeight();
+            double[][] mask = new double[imgWidth][imgHeight];
+            BufferedImage maskImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
+
+            int boxX = (int) (selectedArea.x * scaleX);
+            int boxY = (int) (selectedArea.y * scaleY);
+            int boxWidth = (int) (selectedArea.width * scaleX);
+            int boxHeight = (int) (selectedArea.height * scaleY);
+
+            for (int x = 0; x < imgWidth; x++) {
+                for (int y = 0; y < imgHeight; y++) {
+                    if (x >= boxX && x < boxX + boxWidth && y >= boxY && y < boxY + boxHeight) {
+                        mask[x][y] = 1.0;
+                        maskImage.setRGB(x, y, Color.WHITE.getRGB());
+                    } else {
+                        mask[x][y] = 0.0;
+                        maskImage.setRGB(x, y, Color.BLACK.getRGB());
+                    }
+                }
+            }
+
+            try {
+                File outputFile = new File(protectedMaskPath);
+                ImageIO.write(maskImage, "jpg", outputFile);
+                System.out.println("Mask image saved as " + filename);
+            } catch (IOException ex) {
+                System.err.println("Error saving the mask image: " + ex.getMessage());
+            }
         }
     }
 }
