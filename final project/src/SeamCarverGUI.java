@@ -142,7 +142,7 @@ public class SeamCarverGUI extends JFrame {
                         protected Void doInBackground() throws Exception {
                             if(protectedMaskPath == null) protectedMaskPath = "";
                             if(removalMaskPath == null) removalMaskPath = "";
-                            SeamCarver sc = new SeamCarver(imagePath, targetWidth, targetHeight, protectedMaskPath, removalMaskPath);
+                            SeamCarver sc = new SeamCarver(imagePath, targetHeight, targetWidth, protectedMaskPath, removalMaskPath);
                             return null;
                         }
                     };
@@ -278,8 +278,8 @@ public class SeamCarverGUI extends JFrame {
         int userSelection = fileChooser.showSaveDialog(this);
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File directory = fileChooser.getSelectedFile();
-            if(isProtect) protectedMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
-            if(isRemoval) removalMaskPath = new File(directory, "mask.jpg").getAbsolutePath();
+            if(isProtect) protectedMaskPath = new File(directory, "maskBrush.jpg").getAbsolutePath();
+            if(isRemoval) removalMaskPath = new File(directory, "maskBrush.jpg").getAbsolutePath();
             brushSelection = new boolean[currentImage.getWidth()][currentImage.getHeight()];
 
             MouseAdapter mouseAdapter = new MouseAdapter() {
