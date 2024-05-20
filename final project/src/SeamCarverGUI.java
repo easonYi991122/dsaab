@@ -10,12 +10,12 @@ import java.io.IOException;
 
 public class SeamCarverGUI extends JFrame {
     private MyImageLabel imageLabel;
+    private JLabel imageSizeLabel;
     private BufferedImage currentImage;
     private double scaleX, scaleY;
     public String imagePath;
     public String protectedMaskPath;
     public String removalMaskPath;
-    public boolean isSelected;
     private Rectangle selectedArea;
     private boolean[][] brushSelection;
     private boolean isProtect = false;
@@ -61,8 +61,15 @@ public class SeamCarverGUI extends JFrame {
         JButton removalButton = new JButton("Remove Region");
 
         imageLabel = new MyImageLabel();
-        JScrollPane scrollPane = new JScrollPane(imageLabel);
+        imageSizeLabel = new JLabel();      // Label for displaying image dimensions
 
+        JPanel rightPanel = new JPanel();
+        rightPanel.setLayout(new BorderLayout());
+        rightPanel.add(imageSizeLabel, BorderLayout.NORTH);
+
+        JScrollPane scrollPane = new JScrollPane(imageLabel);
+        JScrollPane originalScrollPane = new JScrollPane(rightPanel); // Scroll pane for the original-sized image
+        originalScrollPane.setPreferredSize(new Dimension(800, 30));
         uploadButton.addActionListener(this::uploadImage);
         carveButton.addActionListener(this::carveImage);
         protectButton.addActionListener(this::protectRegion);
@@ -75,6 +82,7 @@ public class SeamCarverGUI extends JFrame {
 
         add(buttonPanel, BorderLayout.SOUTH);
         add(scrollPane, BorderLayout.CENTER);
+        add(originalScrollPane, BorderLayout.NORTH);
 
         setVisible(true);
     }
@@ -82,21 +90,27 @@ public class SeamCarverGUI extends JFrame {
     private void uploadImage(ActionEvent e) {
         JFileChooser fileChooser = new JFileChooser();
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            isSelected = true;
+            boolean isCarving = true;
             File file = fileChooser.getSelectedFile();
             imagePath = "file:///" + file.getAbsolutePath().replace("\\", "/");
             try {
                 currentImage = ImageIO.read(file);
 
-                int width = imageLabel.getWidth();
-                int height = imageLabel.getHeight();
+                int width = currentImage.getWidth();
+                int height = currentImage.getHeight();
 
                 // Calculate scaling factors
-                scaleX = (double) currentImage.getWidth() / width;
-                scaleY = (double) currentImage.getHeight() / height;
+                scaleX = (double) width / imageLabel.getWidth();
+                scaleY = (double) height / imageLabel.getHeight();
 
-                Image scaledImage = currentImage.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                Image scaledImage = currentImage.getScaledInstance(imageLabel.getWidth(), imageLabel.getHeight(), Image.SCALE_SMOOTH);
                 imageLabel.setIcon(new ImageIcon(scaledImage));
+
+                // Update image size label
+                imageSizeLabel.setText("  Image Size: " + width + " x " + height);
+                imageSizeLabel.revalidate();
+                imageSizeLabel.repaint();
+
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
