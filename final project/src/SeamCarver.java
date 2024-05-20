@@ -785,7 +785,6 @@ public class SeamCarver {
     }
 
     private void displayPicture(Picture image) {
-
         BufferedImage bufferedImage = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         for (int col = 0; col < image.width(); col++) {
             for (int row = 0; row < image.height(); row++) {
@@ -793,8 +792,14 @@ public class SeamCarver {
             }
         }
 
-        // 将BufferedImage转换为ImageIcon以便展示
-        ImageIcon imageIcon = new ImageIcon(bufferedImage);
+        // 设置窗口大小
+        int frameWidth = 800;
+        int frameHeight = 600;
+        frame.setSize(frameWidth+100, frameHeight+100);
+
+        // 缩放图片以适应窗口大小
+        Image scaledImage = bufferedImage.getScaledInstance(frameWidth, frameHeight, Image.SCALE_SMOOTH);
+        ImageIcon imageIcon = new ImageIcon(scaledImage);
 
         // 创建一个带有图片的JLabel
         JLabel jLabel = new JLabel(imageIcon);
@@ -803,16 +808,7 @@ public class SeamCarver {
         frame.getContentPane().removeAll();
         frame.getContentPane().add(jLabel); // 添加新的内容
 
-        frame.pack(); // 调整窗口大小以适应图片
         frame.setVisible(true); // 使窗口可见
-
-//        try {
-//            // 使当前线程暂停1毫秒
-//            Thread.sleep(10);
-//        } catch (InterruptedException e) {
-//            // 当Thread.sleep被中断时，它会抛出InterruptedException异常
-//            e.printStackTrace();
-//        }
     }
 }
 
