@@ -267,7 +267,7 @@ public class SeamCarver {
             mask = tempMask;
         }
 
-        for (int i = 0; i < seamsRecord.size(); i++) {
+        for (int i = 0; i < numPixels; i++) {
             int[] seam = seamsRecord.remove(0);
             addSeam(seam, rotate_state);
             if (protect) {
