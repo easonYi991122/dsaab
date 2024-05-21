@@ -12,7 +12,7 @@ public class SeamCarverGUI extends JFrame {
     private MyImageLabel imageLabel;
     private JLabel imageSizeLabel;
     private BufferedImage currentImage;
-    private double scaleX, scaleY;
+    private double maxScale;
     public String imagePath;
     public String savedImagePath; //Used in SeamCarver
     public String protectedMaskPath;
@@ -35,11 +35,11 @@ public class SeamCarverGUI extends JFrame {
             }
             if (brushSelection != null) {
                 Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setColor(new Color(255, 0, 0, 128));
+                g2d.setColor(new Color(255, 65, 65, 128));
                 for (int x = 0; x < brushSelection.length; x++) {
                     for (int y = 0; y < brushSelection[x].length; y++) {
                         if (brushSelection[x][y]) {
-                            g2d.fillRect((int) (x / scaleX), (int) (y / scaleY), 1, 1);
+                            g2d.fillRect((int) (x / maxScale), (int) (y / maxScale), 1, 1);
                         }
                     }
                 }
@@ -91,20 +91,25 @@ public class SeamCarverGUI extends JFrame {
     private void uploadImage(ActionEvent e) {
         JFileChooser fileChooser = new JFileChooser();
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            boolean isCarving = true;
             File file = fileChooser.getSelectedFile();
             imagePath = "file:///" + file.getAbsolutePath().replace("\\", "/");
             try {
                 currentImage = ImageIO.read(file);
 
+                //Read the original size of the uploaded image
                 int width = currentImage.getWidth();
                 int height = currentImage.getHeight();
 
                 // Calculate scaling factors
-                scaleX = (double) width / imageLabel.getWidth();
-                scaleY = (double) height / imageLabel.getHeight();
+                double scaleX = (double) width / imageLabel.getWidth();
+                double scaleY = (double) height / imageLabel.getHeight();
+                maxScale = Math.max(scaleX, scaleY);
 
-                Image scaledImage = currentImage.getScaledInstance(imageLabel.getWidth(), imageLabel.getHeight(), Image.SCALE_SMOOTH);
+                //Define the exhibited image size
+                int imageX = (int) (currentImage.getWidth()/maxScale);
+                int imageY = (int) (currentImage.getHeight()/maxScale);
+
+                Image scaledImage = currentImage.getScaledInstance(imageX, imageY, Image.SCALE_SMOOTH);
                 imageLabel.setIcon(new ImageIcon(scaledImage));
 
                 // Update image size label
@@ -129,58 +134,62 @@ public class SeamCarverGUI extends JFrame {
             sizePanel.add(Box.createHorizontalStrut(15)); // a spacer
             sizePanel.add(new JLabel("Height:"));
             sizePanel.add(heightField);
+            int originalWidth = currentImage.getWidth();
+            int originalHeight = currentImage.getHeight();
 
-            int result = JOptionPane.showConfirmDialog(null, sizePanel,
-                    "Please Enter Desired Size", JOptionPane.OK_CANCEL_OPTION);
-            if (result == JOptionPane.OK_OPTION) {
-                try {
-                    int targetWidth = Integer.parseInt(widthField.getText());
-                    int targetHeight = Integer.parseInt(heightField.getText());
+            int result;
+            if(!isRemoval) { //If we are not going to remove the image:
+                result = JOptionPane.showConfirmDialog(null, sizePanel,
+                        "Please Enter Desired Size", JOptionPane.OK_CANCEL_OPTION);
+                if (result == JOptionPane.OK_OPTION) {
+                    try {
+                        int targetWidth = Integer.parseInt(widthField.getText());
+                        int targetHeight = Integer.parseInt(heightField.getText());
 
-                    int originalWidth = currentImage.getWidth();
-                    int originalHeight = currentImage.getHeight();
-
-
-                    if (targetWidth > originalWidth * 1.5 || targetHeight > originalHeight * 1.5) {
-                        JOptionPane.showMessageDialog(this, "We recommend new size within 1.5x of original size.", "Error", JOptionPane.ERROR_MESSAGE);
-                    } else {
-                        BufferedImage savedImage = new BufferedImage(targetWidth,targetHeight,BufferedImage.TYPE_INT_RGB);
-
-                        JFileChooser fileChooser = new JFileChooser();
-                        fileChooser.setDialogTitle("Select Directory to Save the Carved Image");
-                        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                        int userSelection = fileChooser.showSaveDialog(this);
-                        if (userSelection == JFileChooser.APPROVE_OPTION) {
-                            File directory = fileChooser.getSelectedFile();
-                            savedImagePath = new File(directory,"savedImage.jpg").getAbsolutePath();
+                        // Expansion Guarantee
+                        if (targetWidth > originalWidth * 1.5 || targetHeight > originalHeight * 1.5) {
+                            JOptionPane.showMessageDialog(this, "We recommend new size within 1.5x of original size.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
-                        //What we can do in the GUI so far
 
-                        long startTime = System.nanoTime();
-                        SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
-                            @Override
-                            protected Void doInBackground() throws Exception {
-                                if(protectedMaskPath == null) protectedMaskPath = "";
-                                if(removalMaskPath == null) removalMaskPath = "";
-                                SeamCarver sc = new SeamCarver(imagePath, targetHeight, targetWidth, protectedMaskPath, removalMaskPath);
+                        else ImageCarvingCall(targetHeight, targetWidth);
 
-                                BufferedImage outputImage =sc.getOutputImage();
-                                ImageIO.write(outputImage,"jpg", new File(savedImagePath));
-                                JOptionPane.showMessageDialog(SeamCarverGUI.this, "Carve operation completed, carved picture is saved in the save_path.", "Information", JOptionPane.INFORMATION_MESSAGE);
-                                return null;
-                            }
-                        };
-                        worker.execute();
-                        long endTime = System.nanoTime();
-                        TimeMeasure(startTime, endTime);
+                    } catch (NumberFormatException ex) {
+                        JOptionPane.showMessageDialog(this, "Invalid size entered.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
-
-
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Invalid size entered.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
+            //If we are going to remove some part:
+            else    ImageCarvingCall(originalHeight, originalWidth);
         }
+    }
+
+    private void ImageCarvingCall(int targetHeight, int targetWidth){
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select Directory to Save the Carved Image");
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        int userSelection = fileChooser.showSaveDialog(this);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File directory = fileChooser.getSelectedFile();
+            savedImagePath = new File(directory,"savedImage.jpg").getAbsolutePath();
+        }
+
+        long startTime = System.nanoTime();
+        SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                if(protectedMaskPath == null) protectedMaskPath = "";
+                if(removalMaskPath == null) removalMaskPath = "";
+                SeamCarver sc = new SeamCarver(imagePath, targetHeight, targetWidth, protectedMaskPath, removalMaskPath);
+
+                BufferedImage outputImage =sc.getOutputImage();
+                ImageIO.write(outputImage,"jpg", new File(savedImagePath));
+                JOptionPane.showMessageDialog(SeamCarverGUI.this, "Carve operation completed, carved picture is saved in the save_path.", "Information", JOptionPane.INFORMATION_MESSAGE);
+                return null;
+            }
+        };
+        worker.execute();
+        long endTime = System.nanoTime();
+        TimeMeasure(startTime, endTime);
     }
 
     private static void TimeMeasure(long startTime, long endTime){
@@ -326,10 +335,10 @@ public class SeamCarverGUI extends JFrame {
 
                 private void updateBrushSelection(Point point) {
                     int brushSize = 10;
-                    int xStart = Math.max(0, (int) (point.x * scaleX) - brushSize / 2);
-                    int xEnd = Math.min(currentImage.getWidth(), (int) (point.x * scaleX) + brushSize / 2);
-                    int yStart = Math.max(0, (int) (point.y * scaleY) - brushSize / 2);
-                    int yEnd = Math.min(currentImage.getHeight(), (int) (point.y * scaleY) + brushSize / 2);
+                    int xStart = Math.max(0, (int) (point.x * maxScale) - brushSize / 2);
+                    int xEnd = Math.min(currentImage.getWidth(), (int) (point.x * maxScale) + brushSize / 2);
+                    int yStart = Math.max(0, (int) (point.y * maxScale) - brushSize / 2);
+                    int yEnd = Math.min(currentImage.getHeight(), (int) (point.y * maxScale) + brushSize / 2);
 
                     for (int x = xStart; x < xEnd; x++) {
                         for (int y = yStart; y < yEnd; y++) {
@@ -350,20 +359,7 @@ public class SeamCarverGUI extends JFrame {
         if (currentImage != null) {
             int imgWidth = currentImage.getWidth();
             int imgHeight = currentImage.getHeight();
-            double[][] mask = new double[imgWidth][imgHeight];
             BufferedImage maskImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
-
-            for (int x = 0; x < imgWidth; x++) {
-                for (int y = 0; y < imgHeight; y++) {
-                    if (brushSelection[x][y]) {
-                        mask[x][y] = 1.0;
-                        maskImage.setRGB(x, y, Color.WHITE.getRGB());
-                    } else {
-                        mask[x][y] = 0.0;
-                        maskImage.setRGB(x, y, Color.BLACK.getRGB());
-                    }
-                }
-            }
 
             try {
                 File outputFile = new File(filename);
@@ -382,10 +378,10 @@ public class SeamCarverGUI extends JFrame {
             double[][] mask = new double[imgWidth][imgHeight];
             BufferedImage maskImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
 
-            int boxX = (int) (selectedArea.x * scaleX);
-            int boxY = (int) (selectedArea.y * scaleY);
-            int boxWidth = (int) (selectedArea.width * scaleX);
-            int boxHeight = (int) (selectedArea.height * scaleY);
+            int boxX = (int) (selectedArea.x * maxScale);
+            int boxY = (int) (selectedArea.y * maxScale);
+            int boxWidth = (int) (selectedArea.width * maxScale);
+            int boxHeight = (int) (selectedArea.height * maxScale);
 
             for (int x = 0; x < imgWidth; x++) {
                 for (int y = 0; y < imgHeight; y++) {
