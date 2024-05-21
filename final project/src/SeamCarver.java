@@ -810,5 +810,21 @@ public class SeamCarver {
 
         frame.setVisible(true); // 使窗口可见
     }
+
+    public BufferedImage getOutputImage() {
+        // 创建一个新的BufferedImage对象
+        BufferedImage outputImage = new BufferedImage(outImage.width(), outImage.height(), BufferedImage.TYPE_INT_RGB);
+
+        // 遍历outImage中的每个像素
+        for (int col = 0; col < outImage.width(); col++) {
+            for (int row = 0; row < outImage.height(); row++) {
+                // 将outImage中的像素颜色复制到outputImage中
+                outputImage.setRGB(col, row, outImage.get(col, row).getRGB());
+            }
+        }
+
+        // 返回包含处理后的图片数据的BufferedImage对象
+        return outputImage;
+    }
 }
 

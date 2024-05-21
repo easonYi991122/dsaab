@@ -155,7 +155,9 @@ public class SeamCarverGUI extends JFrame {
                             if(protectedMaskPath == null) protectedMaskPath = "";
                             if(removalMaskPath == null) removalMaskPath = "";
                             SeamCarver sc = new SeamCarver(imagePath, targetHeight, targetWidth, protectedMaskPath, removalMaskPath);
-                            ImageIO.write(savedImage,"jpg", new File(savedImagePath));
+
+                            BufferedImage outputImage =sc.getOutputImage();
+                            ImageIO.write(outputImage,"jpg", new File(savedImagePath));
                             return null;
                         }
                     };
