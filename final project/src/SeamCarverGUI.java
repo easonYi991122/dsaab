@@ -159,7 +159,7 @@ public class SeamCarverGUI extends JFrame {
                 }
             }
             //If we are going to remove some part:
-            else    ImageCarvingCall(originalHeight, originalWidth);
+            if(isRemoval)   ImageCarvingCall(originalHeight, originalWidth);
         }
     }
 
