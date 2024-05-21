@@ -529,6 +529,7 @@ public class SeamCarver {
             }
         }
 
+
         outImage = output;
     }
     public void deleteSeam_pure(int[] seamIdx) {

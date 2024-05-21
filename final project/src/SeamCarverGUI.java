@@ -136,34 +136,45 @@ public class SeamCarverGUI extends JFrame {
                 try {
                     int targetWidth = Integer.parseInt(widthField.getText());
                     int targetHeight = Integer.parseInt(heightField.getText());
-                    BufferedImage savedImage = new BufferedImage(targetWidth,targetHeight,BufferedImage.TYPE_INT_RGB);
 
-                    JFileChooser fileChooser = new JFileChooser();
-                    fileChooser.setDialogTitle("Select Directory to Save the Carved Image");
-                    fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                    int userSelection = fileChooser.showSaveDialog(this);
-                    if (userSelection == JFileChooser.APPROVE_OPTION) {
-                        File directory = fileChooser.getSelectedFile();
-                        savedImagePath = new File(directory,"savedImage.jpg").getAbsolutePath();
-                    }
-                    //What we can do in the GUI so far
+                    int originalWidth = currentImage.getWidth();
+                    int originalHeight = currentImage.getHeight();
 
-                    long startTime = System.nanoTime();
-                    SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
-                        @Override
-                        protected Void doInBackground() throws Exception {
-                            if(protectedMaskPath == null) protectedMaskPath = "";
-                            if(removalMaskPath == null) removalMaskPath = "";
-                            SeamCarver sc = new SeamCarver(imagePath, targetHeight, targetWidth, protectedMaskPath, removalMaskPath);
 
-                            BufferedImage outputImage =sc.getOutputImage();
-                            ImageIO.write(outputImage,"jpg", new File(savedImagePath));
-                            return null;
+                    if (targetWidth > originalWidth * 1.5 || targetHeight > originalHeight * 1.5) {
+                        JOptionPane.showMessageDialog(this, "We recommend new size within 1.5x of original size.", "Error", JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        BufferedImage savedImage = new BufferedImage(targetWidth,targetHeight,BufferedImage.TYPE_INT_RGB);
+
+                        JFileChooser fileChooser = new JFileChooser();
+                        fileChooser.setDialogTitle("Select Directory to Save the Carved Image");
+                        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                        int userSelection = fileChooser.showSaveDialog(this);
+                        if (userSelection == JFileChooser.APPROVE_OPTION) {
+                            File directory = fileChooser.getSelectedFile();
+                            savedImagePath = new File(directory,"savedImage.jpg").getAbsolutePath();
                         }
-                    };
-                    worker.execute();
-                    long endTime = System.nanoTime();
-                    TimeMeasure(startTime, endTime);
+                        //What we can do in the GUI so far
+
+                        long startTime = System.nanoTime();
+                        SwingWorker<Void, BufferedImage> worker = new SwingWorker<Void, BufferedImage>() {
+                            @Override
+                            protected Void doInBackground() throws Exception {
+                                if(protectedMaskPath == null) protectedMaskPath = "";
+                                if(removalMaskPath == null) removalMaskPath = "";
+                                SeamCarver sc = new SeamCarver(imagePath, targetHeight, targetWidth, protectedMaskPath, removalMaskPath);
+
+                                BufferedImage outputImage =sc.getOutputImage();
+                                ImageIO.write(outputImage,"jpg", new File(savedImagePath));
+                                JOptionPane.showMessageDialog(SeamCarverGUI.this, "Carve operation completed, carved picture is saved in the save_path.", "Information", JOptionPane.INFORMATION_MESSAGE);
+                                return null;
+                            }
+                        };
+                        worker.execute();
+                        long endTime = System.nanoTime();
+                        TimeMeasure(startTime, endTime);
+                    }
+
 
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Invalid size entered.", "Error", JOptionPane.ERROR_MESSAGE);
