@@ -159,7 +159,7 @@ public class SeamCarver {
         if (!rotate) {
             numPixels = inWidth - outImage.width();
         } else {
-            numPixels = inHeight - outImage.height();
+            numPixels = inHeight - outImage.width();
         }
 
         seamsInsertion(numPixels, rotate);
