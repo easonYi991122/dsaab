@@ -359,7 +359,20 @@ public class SeamCarverGUI extends JFrame {
         if (currentImage != null) {
             int imgWidth = currentImage.getWidth();
             int imgHeight = currentImage.getHeight();
+            double[][] mask = new double[imgWidth][imgHeight];
             BufferedImage maskImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_RGB);
+
+            for (int x = 0; x < imgWidth; x++) {
+                for (int y = 0; y < imgHeight; y++) {
+                    if (brushSelection[x][y]) {
+                        mask[x][y] = 1.0;
+                        maskImage.setRGB(x, y, Color.WHITE.getRGB());
+                    } else {
+                        mask[x][y] = 0.0;
+                        maskImage.setRGB(x, y, Color.BLACK.getRGB());
+                    }
+                }
+            }
 
             try {
                 File outputFile = new File(filename);
