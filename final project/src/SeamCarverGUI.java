@@ -125,6 +125,12 @@ public class SeamCarverGUI extends JFrame {
 
     private void carveImage(ActionEvent e) {
         if (imagePath != null) {
+
+            // 清除选择框和画笔选择区域
+            selectedArea = null;
+            brushSelection = null;
+            imageLabel.repaint();
+
             // Show a dialog to input the desired size for the carved image
             JTextField widthField = new JTextField(5);
             JTextField heightField = new JTextField(5);
@@ -160,6 +166,7 @@ public class SeamCarverGUI extends JFrame {
             }
             //If we are going to remove some part:
             if(isRemoval)   ImageCarvingCall(originalHeight, originalWidth);
+
         }
     }
 
@@ -183,7 +190,14 @@ public class SeamCarverGUI extends JFrame {
 
                 BufferedImage outputImage =sc.getOutputImage();
                 ImageIO.write(outputImage,"jpg", new File(savedImagePath));
-                JOptionPane.showMessageDialog(SeamCarverGUI.this, "Carve operation completed, carved picture is saved in the save_path.", "Information", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(sc.frame, "Carve operation completed, carved picture is saved in the save_path.", "Information", JOptionPane.INFORMATION_MESSAGE);
+                sc.frame.dispose();
+
+                protectedMaskPath = null;
+                removalMaskPath = null;
+                isProtect = false;
+                isRemoval = false;
+
                 return null;
             }
         };
@@ -334,7 +348,7 @@ public class SeamCarverGUI extends JFrame {
                 }
 
                 private void updateBrushSelection(Point point) {
-                    int brushSize = 10;
+                    int brushSize = (int) (15.0 * maxScale);
                     int xStart = Math.max(0, (int) (point.x * maxScale) - brushSize / 2);
                     int xEnd = Math.min(currentImage.getWidth(), (int) (point.x * maxScale) + brushSize / 2);
                     int yStart = Math.max(0, (int) (point.y * maxScale) - brushSize / 2);

@@ -21,6 +21,7 @@ public class SeamCarver {
     private int outWidth;
     private boolean object;
     private boolean protect;
+    private boolean loading;
     private double[][] kernelX;
     private double[][] kernelYLeft;
     private double[][] kernelYRight;
@@ -42,6 +43,7 @@ public class SeamCarver {
 
         this.object = !objectMask.isEmpty();
         this.protect = !protectMask.isEmpty();
+        this.loading = false;
 
         if (object) {
             this.mask = readMask(objectMask);
@@ -55,8 +57,7 @@ public class SeamCarver {
 
         frameini();
         start();
-        frame.dispose();
-        saveResult("D:\\study\\dsaab\\final project\\out1.jpg");
+        //saveResult("D:\\study\\dsaab\\final project\\out1.jpg");
     }
 
     public double[][] readMask(String objectMask) {
@@ -94,6 +95,7 @@ public class SeamCarver {
         } else {
             seamsCarving();
         }
+        displayPictureWithDynamicFrame(outImage);
     }
 
     public void seamsCarving() {
@@ -250,17 +252,20 @@ public class SeamCarver {
             applyMaskToEnergyMap(energyMap, mask, constant);
         }
 
+        loading = true;
         for (int i = 0; i < numPixels; i++) {
 
+            double progress = (double) i / numPixels;
             double[][] cumulativeMap = cumulativeMapBackward(energyMap);
             int[] seamIdx = findSeam(cumulativeMap);
             seamsRecord.add(seamIdx);
-            deleteSeam_pure(seamIdx);
+            deleteSeam_pure(seamIdx, progress);
             if (protect) {
                 deleteSeamOnMask(seamIdx);
             }
             energyMap = updateEnergyMap(energyMap, seamIdx);
         }
+        loading = false;
 
         outImage = tempImage;
         if (protect) {
@@ -532,10 +537,13 @@ public class SeamCarver {
 
         outImage = output;
     }
-    public void deleteSeam_pure(int[] seamIdx) {
+    public void deleteSeam_pure(int[] seamIdx, double progress) {
         int m = outImage.height();
         int n = outImage.width();
         Picture output = new Picture(n - 1, m);
+
+        Picture displayImage = generateLoadingFrame(progress);
+        displayPicture(displayImage);
 
 //        // 创建一个临时的图片副本用于展示删除的seam
 //        Picture displayImage = new Picture(n, m);
@@ -805,8 +813,15 @@ public class SeamCarver {
         
         int imageheight = (int) (image.height() * scale);
         int imagewidth = (int) (image.width() * scale);
-        
-        Image scaledImage = bufferedImage.getScaledInstance(imagewidth, imageheight, Image.SCALE_SMOOTH);
+
+        Image scaledImage;
+
+        if(loading == false){
+            scaledImage = bufferedImage.getScaledInstance(imagewidth, imageheight, Image.SCALE_SMOOTH);
+        }
+        else {
+            scaledImage = bufferedImage;
+        }
         ImageIcon imageIcon = new ImageIcon(scaledImage);
 
         // 创建一个带有图片的JLabel
@@ -815,6 +830,30 @@ public class SeamCarver {
         // 每次显示新图片前，清除旧的内容
         frame.getContentPane().removeAll();
         frame.getContentPane().add(jLabel); // 添加新的内容
+
+        frame.setVisible(true); // 使窗口可见
+    }
+    public void displayPictureWithDynamicFrame(Picture image) {
+        BufferedImage bufferedImage = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
+        for (int col = 0; col < image.width(); col++) {
+            for (int row = 0; row < image.height(); row++) {
+                bufferedImage.setRGB(col, row, image.get(col, row).getRGB());
+            }
+        }
+
+        // 设置窗口大小为图片大小
+        int frameWidth = image.width();
+        int frameHeight = image.height();
+        frame.setSize(frameWidth + 100, frameHeight + 100); // 增加一些边框空间
+
+        ImageIcon imageIcon = new ImageIcon(bufferedImage);
+
+        // 创建一个带有图片的JLabel
+        JLabel jLabel = new JLabel(imageIcon);
+
+        // 清除旧的内容并添加新的内容
+        frame.getContentPane().removeAll();
+        frame.getContentPane().add(jLabel);
 
         frame.setVisible(true); // 使窗口可见
     }
@@ -834,5 +873,345 @@ public class SeamCarver {
         // 返回包含处理后的图片数据的BufferedImage对象
         return outputImage;
     }
+
+    public Picture generateLoadingFrame(double progress) {
+
+        long currentTimeMillis = System.currentTimeMillis();
+        int angle = (int) ((currentTimeMillis / 25) % 360);
+
+        int picWidth = 800;
+        int picHeight = 600;
+
+        Picture picture = new Picture(picWidth, picHeight);
+
+        // 设置背景为白色
+        for (int col = 0; col < picWidth; col++) {
+            for (int row = 0; row < picHeight; row++) {
+                picture.set(col, row, Color.WHITE);
+            }
+        }
+
+        int numDots = 12;
+        int radius = 50;
+        int centerX = picWidth / 2;
+        int centerY = picHeight / 2;
+
+        // 绘制旋转的加载点
+        for (int i = 0; i < numDots; i++) {
+            double theta = Math.toRadians(angle + (360 / numDots) * i);
+            int x = centerX + (int) (radius * Math.cos(theta));
+            int y = centerY + (int) (radius * Math.sin(theta));
+            // 绘制一个黑色的点
+            for (int dx = -8; dx <= 8; dx++) {
+                for (int dy = -8; dy <= 8; dy++) {
+                    if (x + dx >= 0 && x + dx < picWidth && y + dy >= 0 && y + dy < picHeight) {
+                        picture.set(x + dx, y + dy, Color.BLACK);
+                    }
+                }
+            }
+        }
+
+        // 绘制进度条
+        int progressBarWidth = (int) (picWidth * 0.8);
+        int progressBarHeight = 20;
+        int progressBarX = (picWidth - progressBarWidth) / 2;
+        int progressBarY = picHeight - 100;
+
+        // 绘制进度条背景
+        for (int col = progressBarX; col < progressBarX + progressBarWidth; col++) {
+            for (int row = progressBarY; row < progressBarY + progressBarHeight; row++) {
+                picture.set(col, row, Color.LIGHT_GRAY);
+            }
+        }
+
+        // 绘制进度条前景
+        int filledWidth = (int) (progressBarWidth * progress);
+        for (int col = progressBarX; col < progressBarX + filledWidth; col++) {
+            for (int row = progressBarY; row < progressBarY + progressBarHeight; row++) {
+                picture.set(col, row, Color.BLUE);
+            }
+        }
+
+        // 绘制百分比文字
+        String progressText = String.format("%.0f%%", progress * 100.0);
+        drawText(picture, progressText, progressBarX + progressBarWidth / 2, progressBarY + progressBarHeight + 20, Color.BLACK);
+
+        // 绘制"Loading"字样
+        String loadingText = "Loading";
+        int numdot = (int) (angle / 10) % 6;
+        for(int i = 0; i < numdot; i++){
+            loadingText += ".";
+        }
+        drawText(picture, loadingText, centerX, centerY + radius + 50, Color.BLACK);
+
+        return picture;
+    }
+
+    private void drawText(Picture picture, String text, int x, int y, Color color) {
+        BufferedImage bufferedImage = new BufferedImage(picture.width(), picture.height(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = bufferedImage.createGraphics();
+
+        g2d.setColor(color);
+        g2d.setFont(new Font("Arial", Font.PLAIN, 24));
+        FontMetrics fm = g2d.getFontMetrics();
+        int textWidth = fm.stringWidth(text);
+        int textHeight = fm.getAscent();
+
+        g2d.drawString(text, x - textWidth / 2, y + textHeight / 2);
+
+        g2d.dispose();
+
+        // 将绘制的文字从 BufferedImage 复制到 Picture
+        for (int col = 0; col < picture.width(); col++) {
+            for (int row = 0; row < picture.height(); row++) {
+                int rgb = bufferedImage.getRGB(col, row);
+                if ((rgb >> 24) != 0x00) { // 判断是否透明
+                    picture.set(col, row, new Color(rgb, true));
+                }
+            }
+        }
+    }
+
 }
+
+
+   /* public Picture generateLoadingFrame(double progress) {
+
+        long currentTimeMillis = System.currentTimeMillis();
+        int angle = (int) ((currentTimeMillis / 50) % 360);
+
+        Picture picture = new Picture(outWidth, outHeight);
+
+        // 设置背景为白色
+        for (int col = 0; col < outWidth; col++) {
+            for (int row = 0; row < outHeight; row++) {
+                picture.set(col, row, Color.WHITE);
+            }
+        }
+
+        int numDots = 12;
+        int radius = 50;
+        int centerX = outWidth / 2;
+        int centerY = outHeight / 2;
+
+        // 绘制旋转的加载点
+        for (int i = 0; i < numDots; i++) {
+            double theta = Math.toRadians(angle + (360 / numDots) * i);
+            int x = centerX + (int) (radius * Math.cos(theta));
+            int y = centerY + (int) (radius * Math.sin(theta));
+            // 绘制一个黑色的点
+            for (int dx = -10; dx <= 10; dx++) {
+                for (int dy = -10; dy <= 10; dy++) {
+                    if (x + dx >= 0 && x + dx < outWidth && y + dy >= 0 && y + dy < outHeight) {
+                        picture.set(x + dx, y + dy, Color.BLACK);
+                    }
+                }
+            }
+        }
+
+        // 绘制进度条
+        int progressBarWidth = (int) (outWidth * 0.8);
+        int progressBarHeight = 20;
+        int progressBarX = (outWidth - progressBarWidth) / 2;
+        int progressBarY = outHeight - 100;
+
+        // 绘制进度条背景
+        for (int col = progressBarX; col < progressBarX + progressBarWidth; col++) {
+            for (int row = progressBarY; row < progressBarY + progressBarHeight; row++) {
+                picture.set(col, row, Color.LIGHT_GRAY);
+            }
+        }
+
+        // 绘制进度条前景
+        int filledWidth = (int) (progressBarWidth * progress);
+        for (int col = progressBarX; col < progressBarX + filledWidth; col++) {
+            for (int row = progressBarY; row < progressBarY + progressBarHeight; row++) {
+                picture.set(col, row, Color.BLUE);
+            }
+        }
+
+        // 绘制百分比文字
+        String progressText = String.format("%.0f%%", progress * 100);
+        drawText(picture, progressText, progressBarX + progressBarWidth / 2, progressBarY + progressBarHeight + 20, Color.BLACK);
+
+        // 绘制"Loading"字样
+        String loadingText = "Loading";
+        drawText(picture, loadingText, centerX, centerY + radius + 50, Color.BLACK);
+
+        return picture;
+    }
+
+    private void drawText(Picture picture, String text, int x, int y, Color color) {
+
+        int scale = 5;
+
+        int fontSize = 5 * scale;
+        int spacing = 2 * scale;
+        int startX = x - (text.length() * (fontSize + spacing)) / 2;
+        int startY = y;
+
+        for (char c : text.toCharArray()) {
+            drawChar(picture, c, startX, startY, fontSize, color);
+            startX += fontSize + spacing;
+        }
+    }
+
+    private void drawChar(Picture picture, char c, int x, int y, int fontSize, Color color) {
+        // 简单的字符绘制函数，使用点阵字体
+        int[][] charMatrix = getCharMatrix(c);
+        if (charMatrix == null) return; // 如果字符不在点阵字体中，则跳过
+
+        int scale = 5;
+
+        for (int i = 0; i < charMatrix.length; i++) {
+            for (int j = 0; j < charMatrix[i].length; j++) {
+                if (charMatrix[i][j] == 1) {
+                    int colStart = x + j * scale;
+                    int rowStart = y + i * scale;
+                    for (int dx = 0; dx < scale; dx++) {
+                        for (int dy = 0; dy < scale; dy++) {
+                            int col = colStart + dx;
+                            int row = rowStart + dy;
+                            if (col >= 0 && col < picture.width() && row >= 0 && row < picture.height()) {
+                                picture.set(col, row, color);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private int[][] getCharMatrix(char c) {
+        // 定义一个简单的点阵字体（这里只定义了几个字符）
+        switch (c) {
+            case 'L': return new int[][] {
+                    {1, 0, 0},
+                    {1, 0, 0},
+                    {1, 0, 0},
+                    {1, 0, 0},
+                    {1, 1, 1}
+            };
+            case 'o': return new int[][] {
+                    {0, 1, 0},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {0, 1, 0}
+            };
+            case 'a': return new int[][] {
+                    {0, 1, 0},
+                    {1, 0, 1},
+                    {1, 1, 1},
+                    {1, 0, 1},
+                    {1, 0, 1}
+            };
+            case 'd': return new int[][] {
+                    {1, 1, 0},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 1, 0}
+            };
+            case 'i': return new int[][] {
+                    {1},
+                    {0},
+                    {1},
+                    {1},
+                    {1}
+            };
+            case 'n': return new int[][] {
+                    {1, 1, 0},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 0, 1}
+            };
+            case 'g': return new int[][] {
+                    {0, 1, 1},
+                    {1, 0, 0},
+                    {1, 0, 1},
+                    {0, 1, 1},
+                    {1, 1, 0}
+            };
+            case '%': return new int[][] {
+                    {1, 0, 1},
+                    {0, 0, 0},
+                    {0, 1, 0},
+                    {0, 0, 0},
+                    {1, 0, 1}
+            };
+            case '0': return new int[][] {
+                    {1, 1, 1},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 1, 1}
+            };
+            case '1': return new int[][] {
+                    {0, 1, 0},
+                    {1, 1, 0},
+                    {0, 1, 0},
+                    {0, 1, 0},
+                    {1, 1, 1}
+            };
+            case '2': return new int[][] {
+                    {1, 1, 1},
+                    {0, 0, 1},
+                    {1, 1, 1},
+                    {1, 0, 0},
+                    {1, 1, 1}
+            };
+            case '3': return new int[][] {
+                    {1, 1, 1},
+                    {0, 0, 1},
+                    {1, 1, 1},
+                    {0, 0, 1},
+                    {1, 1, 1}
+            };
+            case '4': return new int[][] {
+                    {1, 0, 1},
+                    {1, 0, 1},
+                    {1, 1, 1},
+                    {0, 0, 1},
+                    {0, 0, 1}
+            };
+            case '5': return new int[][] {
+                    {1, 1, 1},
+                    {1, 0, 0},
+                    {1, 1, 1},
+                    {0, 0, 1},
+                    {1, 1, 1}
+            };
+            case '6': return new int[][] {
+                    {1, 1, 1},
+                    {1, 0, 0},
+                    {1, 1, 1},
+                    {1, 0, 1},
+                    {1, 1, 1}
+            };
+            case '7': return new int[][] {
+                    {1, 1, 1},
+                    {0, 0, 1},
+                    {0, 0, 1},
+                    {0, 1, 0},
+                    {0, 1, 0}
+            };
+            case '8': return new int[][] {
+                    {1, 1, 1},
+                    {1, 0, 1},
+                    {1, 1, 1},
+                    {1, 0, 1},
+                    {1, 1, 1}
+            };
+            case '9': return new int[][] {
+                    {1, 1, 1},
+                    {1, 0, 1},
+                    {1, 1, 1},
+                    {0, 0, 1},
+                    {1, 1, 1}
+            };
+            default: return null;
+        }
+    }*/
 
