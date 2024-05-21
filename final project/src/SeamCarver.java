@@ -55,7 +55,7 @@ public class SeamCarver {
 
         frameini();
         start();
-        /*frame.dispose();*/
+        frame.dispose();
         saveResult("D:\\study\\dsaab\\final project\\out1.jpg");
     }
 
@@ -799,8 +799,8 @@ public class SeamCarver {
         frame.setSize(frameWidth+100, frameHeight+100);
 
         // 缩放图片以适应窗口大小
-        double heightscale = Math.min(frameHeight / inHeight, frameHeight / outHeight);
-        double widthscale = Math.min(frameWidth / inWidth, frameWidth / outWidth);
+        double heightscale = Math.min((double) frameHeight / inHeight, (double) frameHeight / outHeight);
+        double widthscale = Math.min((double) frameWidth / inWidth, (double) frameWidth / outWidth);
         double scale = Math.min(heightscale, widthscale);
         
         int imageheight = (int) (image.height() * scale);
